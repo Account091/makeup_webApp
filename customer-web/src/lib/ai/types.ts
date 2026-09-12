@@ -1,28 +1,33 @@
-export type AiProviderType = 'huggingface' | 'openai' | 'local';
+export type AiFeature =
+  | 'CUSTOMER_CONCIERGE'
+  | 'ADMIN_COPILOT'
+  | 'CONTENT_DRAFTER'
+  | 'WHATSAPP_ASSISTANT'
+  | 'VISION_ANALYSIS'
+  | 'EMBEDDINGS'
+  | 'ANALYTICS';
 
-export type HuggingFaceEndpointType = 'INFERENCE_PROVIDER' | 'INFERENCE_ENDPOINT' | 'LOCAL';
+export type UserRole =
+  | 'CUSTOMER'
+  | 'ADMIN'
+  | 'OWNER'
+  | 'MANAGER'
+  | 'SUPPORT'
+  | 'CONTENT_MANAGER'
+  | 'ACCOUNTANT'
+  | 'GUEST';
 
-export interface HuggingFaceConfig {
-  provider?: string; // e.g., 'fireworks-ai', 'together', 'groq', 'cerebras'
-  endpointType: HuggingFaceEndpointType;
-  customEndpointUrl?: string;
-}
+export type AiProviderName = 'huggingface' | 'openai' | 'local';
 
-export interface LocalEndpointConfig {
-  url: string; // e.g. http://localhost:11434/v1 or http://localhost:8000/v1
-  model: string;
-}
+export type ActionType = 'READ' | 'MUTATION_RECOMMENDED';
 
-export interface AiModelConfig {
-  activeProvider: AiProviderType;
-  primaryModel: string; // e.g. 'Qwen/Qwen2.5-Coder-32B-Instruct' or 'meta-llama/Llama-3.3-70B-Instruct'
-  huggingFace: HuggingFaceConfig;
-  fallbackProvider?: AiProviderType;
-  fallbackModel?: string;
-  localEndpoint?: LocalEndpointConfig;
-  maxTokens: number;
-  temperature: number;
-  timeoutMs: number;
+export interface AiAuthContext {
+  uid: string;
+  role: UserRole;
+  organizationId: string;
+  customerId?: string;
+  requestId: string;
+  ipAddress?: string;
 }
 
 export interface AiChatMessage {
@@ -30,48 +35,85 @@ export interface AiChatMessage {
   content: string;
 }
 
-export interface AiGatewayRequest {
-  feature: 'BEAUTY_CONCIERGE' | 'ADMIN_COPILOT' | 'WHATSAPP_DRAFTER' | 'IMAGE_ANALYSIS';
+export interface AiGatewayRequestPayload {
+  feature: AiFeature;
   messages: AiChatMessage[];
-  userId?: string;
-  userRole?: 'customer' | 'admin' | 'artist' | 'guest';
-  contextData?: Record<string, any>;
+  auth: AiAuthContext;
+  toolName?: string;
+  toolArgs?: Record<string, any>;
   temperature?: number;
   maxTokens?: number;
 }
 
-export interface AiGatewayResponse {
-  success: boolean;
-  content: string;
-  providerUsed: AiProviderType;
-  modelUsed: string;
-  durationMs: number;
-  tokensUsed?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
+export interface StructuredAiResponse<T = any> {
+  answer: string;
+  data?: T;
+  confidence: number;
+  requiresHumanApproval: boolean;
+  recommendedMutationAction?: {
+    actionType: string;
+    cloudFunctionName: string;
+    payload: Record<string, any>;
+    reasoning: string;
   };
-  auditCallId: string;
-  isFallbackUsed?: boolean;
-  error?: string;
 }
 
-export interface AiToolCallLog {
-  callId: string;
-  timestamp: string;
-  userId: string;
-  userRole: 'customer' | 'admin' | 'artist' | 'guest';
-  feature: string;
-  provider: AiProviderType;
+export interface AiGatewayResult {
+  requestId: string;
+  success: boolean;
+  content: string;
+  structuredResponse?: StructuredAiResponse;
+  provider: AiProviderName;
   model: string;
+  feature: AiFeature;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  fallbackUsed: boolean;
+  requiresHumanApproval: boolean;
+  toolExecuted?: string;
+}
+
+export interface AiToolDefinition {
+  toolName: string;
+  description: string;
+  requiredRole: UserRole[];
+  actionType: ActionType;
+  inputSchema: Record<string, any>;
+  outputSchema: Record<string, any>;
+  authorization: (auth: AiAuthContext, args?: any) => Promise<boolean>;
+  execute: (auth: AiAuthContext, args?: any) => Promise<any>;
+}
+
+export interface AiAuditEvent {
+  requestId: string;
+  uid: string;
+  organizationId: string;
+  customerId?: string;
+  feature: AiFeature;
+  provider: AiProviderName;
+  model: string;
+  toolName: string | null;
+  actionType: ActionType;
+  status: 'SUCCESS' | 'SAFETY_REJECTED' | 'UNAUTHORIZED' | 'RATE_LIMITED' | 'ERROR';
+  startedAt: string;
+  completedAt: string;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  fallbackUsed: boolean;
+  errorCode: string | null;
   promptHash: string;
-  tokensUsed?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-  durationMs: number;
-  isMutationRequested: boolean;
-  status: 'SUCCESS' | 'SAFETY_REJECTED' | 'FALLBACK_USED' | 'ERROR';
-  errorMessage?: string;
+}
+
+export interface AiSettings {
+  enabled: boolean;
+  provider: AiProviderName;
+  providerPolicy: 'auto' | 'fastest' | 'cheapest' | 'preferred';
+  defaultModel: string;
+  fallbackModel: string;
+  maxOutputTokens: number;
+  temperature: number;
+  timeoutMs: number;
+  maxRetries: number;
 }
