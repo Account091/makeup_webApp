@@ -1,0 +1,388 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'admin' || 
+        request.auth.token.role == 'owner'
+      );
+    }
+
+    function isAccountant() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'accountant' ||
+        isAdmin()
+      );
+    }
+
+    // 1. Bookings Collection Security
+    match /bookings/{bookingId} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.customerDetails.email == request.auth.token.email);
+      // Clients can only submit inquiries with AwaitingApproval status and depositPaid = 0
+      allow create: if request.resource.data.status == 'awaitingApproval'
+                    && request.resource.data.commercials.depositPaid == 0;
+      // Updates are strictly admin-controlled or handled via Cloud Functions Admin SDK
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 2. Services & Packages (Public Read, Admin Write)
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /packages/{packageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /addons/{addonId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 3. Calendar & Availability Slots
+    match /availability/{date} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /blockedDates/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 4. Social Content, Comments & Reviews
+    match /socialContent/{contentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /socialComments/{commentId} {
+      allow read: if resource.data.status == 'Approved' || isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'Approved';
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // 5. App Settings & Dynamic Configs
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 6. Private Customer Data & Bridal Questionnaire Security
+    match /bridalQuestionnaires/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create, update: if isAdmin() || (isAuthenticated() && request.resource.data.customerId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    match /consultationVersions/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+    match /customerProfiles/{uid} {
+      allow read, write: if isAdmin() || (isAuthenticated() && request.auth.uid == uid);
+    }
+
+    // 7. V2.4 & V2.5 Financial Collections (Invoices, Ledger, Expenses, Audit, Period Locks)
+    match /invoices/{id} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+    match /payments/{id} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+    match /expenses/{id} {
+      allow read: if isAccountant();
+      allow write: if isAdmin();
+    }
+    match /financialPeriods/{periodId} {
+      allow read: if isAccountant();
+      allow write: if isAccountant();
+    }
+    match /financialAuditEvents/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Append-only via Cloud Functions Admin SDK
+    }
+    match /adjustments/{id} {
+      allow read: if isAccountant();
+      allow write: if isAdmin();
+    }
+    match /paymentReconciliations/{id} {
+      allow read: if isAccountant();
+      allow write: if isAdmin();
+    }
+
+    // 8. V3.0 Beauty Ecommerce Security (Products, Orders, Inventory, Returns)
+    match /products/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /orders/{id} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+    match /inventoryMovements/{id} {
+      allow read: if isAccountant();
+      allow write: if isAdmin();
+    }
+    match /returns/{id} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+    match /wishlists/{uid} {
+      allow read, write: if isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // 9. V3.3 Advanced Ecommerce & Loyalty Security Rules
+    match /loyaltyAccounts/{uid} {
+      allow read: if isAccountant() || (isAuthenticated() && request.auth.uid == uid);
+      allow write: if isAdmin();
+    }
+    match /loyaltyTransactions/{id} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow write: if false; // Append-only via Cloud Functions
+    }
+    match /productBundles/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /productReviews/{id} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+    match /backInStockRequests/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 10. V4.0 Multi-Artist Studio & Resource Management Security Rules
+    match /artists/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /bookingAssignments/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /artistAvailability/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /artistEarnings/{id} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.artistId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+    match /studioResources/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /resourceBookings/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 11. V5.0 AI Assistant & Copilot Audit Security Rules
+    match /aiConversations/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.actorId == request.auth.uid);
+      allow create, update: if isAuthenticated();
+    }
+    match /aiToolCalls/{id} {
+      allow read: if isAdmin();
+      allow write: if false; // Append-only via Cloud Functions Admin SDK
+    }
+    match /contentDrafts/{id} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+    match /aiUsage/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 12. V6.0 Business Intelligence & Analytics Security Rules
+    match /analyticsDaily/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Computed by Cloud Functions Admin SDK
+    }
+    match /analyticsMonthly/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Computed by Cloud Functions Admin SDK
+    }
+    match /businessAlerts/{id} {
+      allow read: if isAccountant();
+      allow write: if isAdmin();
+    }
+    match /forecastSnapshots/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Generated by Cloud Functions Admin SDK
+    }
+
+    // 13. V7.0 Multi-City Hubs & Destination Weddings Security Rules
+    match /locations/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /destinationWeddings/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+    match /analyticsValidation/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Audit engine written via Cloud Functions Admin SDK
+    }
+
+    // 14. V8.0 Beauty Marketplace & Multi-Tenant Security Rules
+    match /organizations/{orgId} {
+      allow read: if resource.data.verificationStatus == 'VERIFIED' || isAdmin() || (isAuthenticated() && resource.data.ownerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.ownerId == request.auth.uid);
+    }
+    match /organizationMemberships/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+      allow write: if false; // Managed via Cloud Functions Admin SDK
+    }
+    match /artistSettlements/{id} {
+      allow read: if isAccountant() || (isAuthenticated() && resource.data.artistId == request.auth.uid);
+      allow write: if false; // Append-only via Cloud Functions Admin SDK
+    }
+    match /marketplaceConversations/{id} {
+      allow read, write: if isAdmin() || (isAuthenticated() && (resource.data.customerId == request.auth.uid || resource.data.artistId == request.auth.uid));
+    }
+    match /marketplaceMessages/{id} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // 15. V9.0 Platform Reliability, Security, Observability & Privacy Rules
+    match /systemHealth/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Generated via Cloud Functions Admin SDK
+    }
+    match /systemTraceLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false; // System trace logging via Cloud Functions Admin SDK
+    }
+    match /riskAssessments/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Scored via Cloud Functions Admin SDK
+    }
+    match /privacyRequests/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // 16. V9.7 Production Certification Gate Rules
+    match /productionCertifications/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Generated via Cloud Functions Admin SDK
+    }
+
+    // 17. V10.0 Event-Day Sessions & Checklists Rules
+    match /eventDaySessions/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 18. V10.0 Bridal Trial Sessions Rules
+    match /bridalTrialSessions/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // 19. V10.0 Support Help Desk Tickets Rules
+    match /supportTickets/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // 20. V10.0 Remote Configuration & Feature Flags Rules
+    match /remoteConfig/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /featureFlags/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 21. V10.1 Consultation Appointments Rules
+    match /consultationAppointments/{id} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.customerId == request.auth.uid);
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // 22. V10.1 Event Media Assets & Consent Rules
+    match /eventMediaAssets/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 23. V10.1 Reschedule Requests & Waitlist Subscriptions Rules
+    match /rescheduleRequests/{id} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+    match /waitlistSubscriptions/{id} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 24. V10.1 Private Customer Feedback Rules
+    match /privateCustomerFeedback/{id} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 25. V10.2 Customer Experience & NPS Metrics Rules
+    match /customerExperienceMetrics/{id} {
+      allow read: if isAccountant();
+      allow write: if false; // Calculated via Cloud Functions Admin SDK
+    }
+
+    // 26. V10.2 Customer Churn & Booking Risk Predictions Rules
+    match /customerRiskPredictions/{id} {
+      allow read: if isAccountant();
+      allow write: if false;
+    }
+    match /bookingRiskScores/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // 27. V10.2 Artist Performance Scorecards Rules
+    match /artistScorecards/{id} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
