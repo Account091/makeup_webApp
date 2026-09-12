@@ -120,14 +120,17 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                   children: [
                     Text(
                       'Makeovers by Prachi',
-                      style: AppTextStyles.headingTitle
-                          .copyWith(color: AppColors.roseGold, fontSize: 20),
+                      style: AppTextStyles.headingTitle.copyWith(
+                        color: AppColors.roseGold,
+                        fontSize: 20,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'V1.1 Automation Engine',
-                      style: AppTextStyles.bodySecondary
-                          .copyWith(color: Colors.white70),
+                      style: AppTextStyles.bodySecondary.copyWith(
+                        color: Colors.white70,
+                      ),
                     ),
                   ],
                 ),
