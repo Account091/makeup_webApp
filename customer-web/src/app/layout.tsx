@@ -1,0 +1,30 @@
+import React from "react";
+import Header from "../components/Header";
+
+export const metadata = {
+  title: "Makeovers by Prachi — Luxury Bridal & Occasion Artistry",
+  description: "Premier Royal Rajasthani Bridal Makeup, Airbrush Artistry, and Poshak Draping in Jodhpur, Jaipur, and Udaipur.",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body style={{ margin: 0, padding: 0, backgroundColor: "#F9F5F0" }}>
+        <Header />
+        {children}
+      </body>
+    </html>
+  );
+}

@@ -3,12 +3,12 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDemoKeyForMakeoversByPrachiWeb",
-  authDomain: "makeovers-by-prachi.firebaseapp.com",
-  projectId: "makeovers-by-prachi",
-  storageBucket: "makeovers-by-prachi.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:makeoversbyprachi"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyTiktok1D7d25WebApiKeyPlaceholder",
+  authDomain: "tiktok1-d7d25.firebaseapp.com",
+  projectId: "tiktok1-d7d25",
+  storageBucket: "tiktok1-d7d25.appspot.com",
+  messagingSenderId: "858543997223",
+  appId: "1:858543997223:web:tiktok1d7d25webapp"
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
