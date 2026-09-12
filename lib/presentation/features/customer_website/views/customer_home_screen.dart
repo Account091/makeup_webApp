@@ -119,8 +119,10 @@ class CustomerHomeScreen extends StatelessWidget {
     return Container(
       color: AppColors.softRose.withValues(alpha: 0.3),
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
         children: [
           _buildProofItem(Icons.verified, 'Certified Professional'),
           _buildProofItem(Icons.location_on, 'Jodhpur & Destination'),

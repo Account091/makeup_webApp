@@ -1,30 +1,74 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:makeup_webapp/data/repositories/booking_repository_impl.dart';
+import 'package:makeup_webapp/data/repositories/service_repository_impl.dart';
+import 'package:makeup_webapp/presentation/features/booking/bloc/booking_bloc.dart';
+import 'package:makeup_webapp/presentation/features/booking/bloc/booking_event.dart';
+import 'package:makeup_webapp/presentation/features/services/bloc/service_bloc.dart';
+import 'package:makeup_webapp/presentation/features/services/bloc/service_event.dart';
+import 'package:makeup_webapp/presentation/features/dashboard/views/admin_dashboard_screen.dart';
+import 'package:makeup_webapp/presentation/features/customers/views/customer_crm_screen.dart';
+import 'package:makeup_webapp/presentation/features/services/views/service_catalog_screen.dart';
+import 'package:makeup_webapp/presentation/features/settings/views/settings_screen.dart';
+import 'package:makeup_webapp/presentation/features/booking/views/booking_inquiry_screen.dart';
 
-import 'package:makeup_webapp/main.dart';
+Widget createTestableWidget(Widget child) {
+  final bookingRepo = BookingRepositoryImpl();
+  final serviceRepo = ServiceRepositoryImpl();
+
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<BookingBloc>(
+        create: (_) => BookingBloc(repository: bookingRepo)..add(FetchBookingsEvent()),
+      ),
+      BlocProvider<ServiceBloc>(
+        create: (_) => ServiceBloc(repository: serviceRepo)..add(FetchServicesEvent()),
+      ),
+    ],
+    child: MaterialApp(
+      home: child,
+    ),
+  );
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MakeoversByPrachiApp());
+  testWidgets('AdminDashboardScreen renders dashboard widget', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestableWidget(const AdminDashboardScreen()));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.byType(AdminDashboardScreen), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('CustomerCrmScreen renders CRM widget', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestableWidget(const CustomerCrmScreen()));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(CustomerCrmScreen), findsOneWidget);
+  });
+
+  testWidgets('ServiceCatalogScreen renders catalog widget', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestableWidget(const ServiceCatalogScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ServiceCatalogScreen), findsOneWidget);
+  });
+
+  testWidgets('SettingsScreen renders settings widget', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestableWidget(const SettingsScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SettingsScreen), findsOneWidget);
+  });
+
+  testWidgets('BookingInquiryScreen renders inquiry widget', (WidgetTester tester) async {
+    await tester.pumpWidget(createTestableWidget(const BookingInquiryScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BookingInquiryScreen), findsOneWidget);
   });
 }
+
+
+
+

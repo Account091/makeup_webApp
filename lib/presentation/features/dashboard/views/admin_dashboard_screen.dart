@@ -110,216 +110,20 @@ class AdminDashboardScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.reviews, color: AppColors.roseGold),
-            tooltip: 'V10.2 Customer Experience CSAT & NPS Intelligence',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CustomerExperienceIntelligenceScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.leaderboard, color: AppColors.roseGold),
-            tooltip: 'V10.2 Artist Performance & Quality Scorecard',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ArtistPerformanceScorecardScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.wb_sunny, color: AppColors.roseGold),
-            tooltip: 'V10.1 Morning Operations Command Dashboard',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DailyOperationsCommandScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.mark_unread_chat_alt, color: AppColors.roseGold),
-            tooltip: 'V10.1 Unified Customer 360 Conversation Stream',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const UnifiedCustomerInboxScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month, color: AppColors.roseGold),
-            tooltip: 'V10.1 Universal Consultation Scheduler',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ConsultationSchedulerScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.camera_alt, color: AppColors.roseGold),
-            tooltip: 'V10.1 Event Media Capture & Consent Engine',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EventMediaCaptureScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_calendar, color: AppColors.roseGold),
-            tooltip: 'V10.1 Reschedule & Date Waitlist Engine',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BookingRescheduleWaitlistScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.search, color: AppColors.roseGold),
-            tooltip: 'V10.0 Global Multi-Entity Search',
+            tooltip: 'Search Platform',
             onPressed: () => _showGlobalSearchModal(context),
           ),
           IconButton(
-            icon: const Icon(Icons.event_seat, color: AppColors.roseGold),
-            tooltip: 'V10.0 Event-Day Execution Console',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EventDayModeScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.brush, color: AppColors.roseGold),
-            tooltip: 'V10.0 Bridal Trial & Consultation Engine',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BridalTrialScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.headset_mic, color: AppColors.roseGold),
-            tooltip: 'V10.0 Support & Help Desk Tickets',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SupportHelpDeskScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.history_edu, color: AppColors.roseGold),
-            tooltip: 'V10.0 Universal Platform Audit Center',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const UniversalAuditCenterScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.verified, color: AppColors.roseGold),
-            tooltip: 'V9.7 Production Certification Gate',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const ProductionCertificationScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.health_and_safety, color: AppColors.roseGold),
-            tooltip: 'V9.0 Platform Reliability & Observability',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const SystemHealthScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.storefront, color: AppColors.roseGold),
-            tooltip: 'V8.0 Beauty Marketplace Scale',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const MarketplaceManagementScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.location_city, color: AppColors.roseGold),
-            tooltip: 'V7.0 Multi-City & Destination Weddings',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const LocationManagementScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined, color: AppColors.roseGold),
-            tooltip: 'V6.0 Business Intelligence & Forecasts',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const BusinessIntelligenceDashboardScreen(),
-                ),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh, color: AppColors.roseGold),
+            tooltip: 'Refresh Data',
             onPressed: () {
               context.read<BookingBloc>().add(FetchBookingsEvent());
             },
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_active_outlined,
-                color: AppColors.roseGold),
+            icon: const Icon(Icons.notifications_active_outlined, color: AppColors.roseGold),
+            tooltip: 'Notification Center',
             onPressed: () {
               Navigator.push(
                 context,
@@ -328,6 +132,128 @@ class AdminDashboardScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+          PopupMenuButton<WidgetBuilder>(
+            icon: const Icon(Icons.more_vert, color: AppColors.roseGold),
+            tooltip: 'Admin Operations Modules',
+            color: AppColors.deepPlum,
+            onSelected: (builder) {
+              Navigator.push(context, MaterialPageRoute(builder: builder));
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: (c) => const CustomerExperienceIntelligenceScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.reviews, color: AppColors.roseGold),
+                  title: Text('CSAT & NPS Intelligence', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const ArtistPerformanceScorecardScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.leaderboard, color: AppColors.roseGold),
+                  title: Text('Artist Performance Scorecard', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const DailyOperationsCommandScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.wb_sunny, color: AppColors.roseGold),
+                  title: Text('Morning Operations Command', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const UnifiedCustomerInboxScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.mark_unread_chat_alt, color: AppColors.roseGold),
+                  title: Text('Unified 360 Customer Inbox', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const ConsultationSchedulerScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.calendar_month, color: AppColors.roseGold),
+                  title: Text('Consultation Scheduler', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const EventMediaCaptureScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.camera_alt, color: AppColors.roseGold),
+                  title: Text('Event Media Capture & Consent', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const BookingRescheduleWaitlistScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.edit_calendar, color: AppColors.roseGold),
+                  title: Text('Reschedule & Waitlist Engine', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const EventDayModeScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.event_seat, color: AppColors.roseGold),
+                  title: Text('Event-Day Execution Console', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const BridalTrialScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.brush, color: AppColors.roseGold),
+                  title: Text('Bridal Trial & Consultation', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const SupportHelpDeskScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.headset_mic, color: AppColors.roseGold),
+                  title: Text('Support & Help Desk', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const UniversalAuditCenterScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.history_edu, color: AppColors.roseGold),
+                  title: Text('Universal Audit Center', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const ProductionCertificationScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.verified, color: AppColors.roseGold),
+                  title: Text('Production Certification Gate', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const SystemHealthScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.health_and_safety, color: AppColors.roseGold),
+                  title: Text('Platform System Health', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const MarketplaceManagementScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.storefront, color: AppColors.roseGold),
+                  title: Text('Beauty Marketplace Scale', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const LocationManagementScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.location_city, color: AppColors.roseGold),
+                  title: Text('Multi-City Location Management', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              PopupMenuItem(
+                value: (c) => const BusinessIntelligenceDashboardScreen(),
+                child: const ListTile(
+                  leading: Icon(Icons.analytics_outlined, color: AppColors.roseGold),
+                  title: Text('BI & Revenue Forecasts', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
