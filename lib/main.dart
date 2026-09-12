@@ -51,12 +51,12 @@ class MakeoversByPrachiApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<BookingBloc>(
-          create: (_) => BookingBloc(repository: bookingRepo)
-            ..add(FetchBookingsEvent()),
+          create: (_) =>
+              BookingBloc(repository: bookingRepo)..add(FetchBookingsEvent()),
         ),
         BlocProvider<ServiceBloc>(
-          create: (_) => ServiceBloc(repository: serviceRepo)
-            ..add(FetchServicesEvent()),
+          create: (_) =>
+              ServiceBloc(repository: serviceRepo)..add(FetchServicesEvent()),
         ),
       ],
       child: MaterialApp(
@@ -93,9 +93,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     AdminDashboardScreen(),
     CalendarScreen(),
     CustomerCrmScreen(),
+    SettingsScreen(),
     ReelsManagerScreen(),
     ModerationQueueScreen(),
-    SettingsScreen(),
     WhatsappDashboardScreen(),
     BookingStatusScreen(),
     ServiceCatalogScreen(),
@@ -139,9 +139,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               _buildDrawerItem(2, 'Master Calendar', Icons.calendar_month),
               _buildDrawerItem(3, 'Customer CRM', Icons.people_alt),
               _buildDrawerItem(7, 'WhatsApp Automation', Icons.chat),
-              _buildDrawerItem(4, 'Reels & Content', Icons.video_library),
-              _buildDrawerItem(5, 'Moderation Queue', Icons.rate_review),
-              _buildDrawerItem(6, 'Settings & Rules', Icons.settings),
+              _buildDrawerItem(4, 'Settings & Rules', Icons.settings),
+              _buildDrawerItem(5, 'Reels & Content', Icons.video_library),
+              _buildDrawerItem(6, 'Moderation Queue', Icons.rate_review),
               const Divider(color: AppColors.lightBorder),
               _buildDrawerItem(9, 'Services Catalog', Icons.grid_view),
               _buildDrawerItem(10, 'Book Date Wizard', Icons.add_task),
@@ -150,10 +150,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
           ),
         ),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex > 4 ? 0 : _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
@@ -162,22 +159,13 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
         backgroundColor: AppColors.deepPlum,
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Website',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Admin',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Website'),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Admin'),
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month),
             label: 'Calendar',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'CRM',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'CRM'),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),
             label: 'Settings',
