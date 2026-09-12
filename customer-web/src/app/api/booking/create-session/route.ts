@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 
 const SERVICE_PRICES: Record<string, number> = {
   "Signature Bridal Makeover": 25000,
@@ -14,25 +14,60 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { service, packageType, date, readyTime, venue, city, guestCount, fullName, phone, email } = body;
 
-    if (!fullName || !phone || !service) {
+    if (!fullName || !phone || !service || !date) {
       return NextResponse.json({ error: "Missing required booking details" }, { status: 400 });
     }
 
-    // 1. Authoritative Pricing Calculation on Server
+    const isoNow = new Date().toISOString();
+
+    // 1. Server-side Hold Conflict Check in calendarReservations collection
+    const activeHoldQuery = query(
+      collection(db, "calendarReservations"),
+      where("eventDate", "==", date),
+      where("status", "==", "HOLD")
+    );
+    const activeHoldSnap = await getDocs(activeHoldQuery);
+
+    const hasActiveHold = activeHoldSnap.docs.some((docSnap) => {
+      const data = docSnap.data();
+      return data.expiresAt && data.expiresAt > isoNow;
+    });
+
+    if (hasActiveHold) {
+      return NextResponse.json(
+        { error: "Another customer currently has an active 5-minute reservation hold on this date. Please try another date or wait 5 minutes." },
+        { status: 409 }
+      );
+    }
+
+    // 2. Authoritative Pricing Calculation on Server
     const basePrice = SERVICE_PRICES[service] || 25000;
     const cityClean = (city || "").toLowerCase().trim();
     const travelFee = cityClean === "jodhpur" || cityClean === "" ? 0 : cityClean === "jaipur" || cityClean === "udaipur" ? 3500 : 8500;
     const totalAmount = basePrice + travelFee;
     const depositAmount = Math.round(totalAmount * 0.3);
 
-    // 2. Authoritative 5-Minute Expiry (Server Timestamp + 300 seconds)
+    // 3. Authoritative 5-Minute Expiry (Server Timestamp + 300 seconds)
     const now = Date.now();
-    const expiresAt = now + 300 * 1000; // 5 minutes
+    const expiresAtMs = now + 300 * 1000; // 5 minutes
+    const expiresAtIso = new Date(expiresAtMs).toISOString();
     const bookingId = `BK-${now.toString().slice(-6)}`;
 
-    // 3. Create Document in Firestore Source of Truth
-    const docRef = await addDoc(collection(db, "bookings"), {
+    // 4. Create Server Hold in calendarReservations
+    const reservationRef = await addDoc(collection(db, "calendarReservations"), {
+      reservationId: `RES-${bookingId}`,
       bookingId,
+      eventDate: date,
+      readyByTime: readyTime,
+      status: "HOLD",
+      expiresAt: expiresAtIso,
+      createdAt: serverTimestamp(),
+    });
+
+    // 5. Create Booking Document in Firestore Source of Truth
+    const bookingRef = await addDoc(collection(db, "bookings"), {
+      bookingId,
+      reservationId: reservationRef.id,
       customerDetails: {
         fullName,
         phone,
@@ -60,7 +95,7 @@ export async function POST(req: Request) {
         payeeName: "Bhawani Sankar",
         status: "DEPOSIT_PENDING",
       },
-      expiresAt: new Date(expiresAt).toISOString(),
+      expiresAt: expiresAtIso,
       status: "DEPOSIT_PENDING",
       createdAt: serverTimestamp(),
     });
@@ -68,10 +103,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       bookingId,
-      docId: docRef.id,
+      docId: bookingRef.id,
       totalAmount,
       depositAmount,
-      expiresAt,
+      expiresAt: expiresAtMs,
       upiVpa: "bhawanisanker1967@okaxis",
       payeeName: "Bhawani Sankar",
     });

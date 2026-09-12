@@ -14,7 +14,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing Booking Ref ID" }, { status: 400 });
     }
 
-    // 1. Query Firestore Source of Truth for session
+    const cleanUtr = (utrNumber || "").trim();
+
+    // 1. UTR Duplicate Detection (prevent reusing same UTR on multiple bookings)
+    if (cleanUtr && cleanUtr !== "N/A") {
+      const duplicateUtrQuery = query(
+        collection(db, "bookings"),
+        where("payment.utrNumber", "==", cleanUtr)
+      );
+      const duplicateSnap = await getDocs(duplicateUtrQuery);
+
+      const isDuplicate = duplicateSnap.docs.some((docSnap) => {
+        const data = docSnap.data();
+        return data.bookingId !== bookingId;
+      });
+
+      if (isDuplicate) {
+        return NextResponse.json(
+          { error: `UTR number '${cleanUtr}' has already been submitted for another booking transaction.` },
+          { status: 409 }
+        );
+      }
+    }
+
+    // 2. Query Firestore Source of Truth for session
     const q = query(collection(db, "bookings"), where("bookingId", "==", bookingId));
     const querySnapshot = await getDocs(q);
 
@@ -25,7 +48,7 @@ export async function POST(req: Request) {
     const bookingDoc = querySnapshot.docs[0];
     const bookingData = bookingDoc.data();
 
-    // 2. Server-side Expiry Enforcement
+    // 3. Server-side Expiry Enforcement
     const expiresAtMs = new Date(bookingData.expiresAt).getTime();
     const nowMs = Date.now();
 
@@ -40,16 +63,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Server-authoritative update in Firestore
+    // 4. Server-authoritative update in Firestore
     await updateDoc(doc(db, "bookings", bookingDoc.id), {
       status: "PAYMENT_PROOF_SUBMITTED",
-      "payment.utrNumber": utrNumber || "N/A",
+      "payment.utrNumber": cleanUtr || "N/A",
       "payment.proofFileName": paymentProofName || "uploaded_screenshot.png",
       "payment.status": "VERIFICATION_PENDING",
       submittedAt: new Date().toISOString(),
     });
 
-    // 4. Server-Side Dispatch to Google Sheets Secondary Mirror
+    // 5. Fault-Tolerant Google Sheets Secondary Operational Mirror Dispatch
     const ledgerPayload = {
       timestamp: new Date().toISOString(),
       booking_id: bookingId,
@@ -59,7 +82,7 @@ export async function POST(req: Request) {
       package_name: bookingData.packageName,
       total_amount_inr: bookingData.commercials?.totalAmount,
       deposit_amount_inr: bookingData.commercials?.depositRequired,
-      utr_number: utrNumber || "N/A",
+      utr_number: cleanUtr || "N/A",
       proof_file: paymentProofName || "uploaded_screenshot.png",
       status: "PAYMENT_PROOF_SUBMITTED",
       source: "SERVER_AUTHORITATIVE_API",
@@ -73,7 +96,7 @@ export async function POST(req: Request) {
       });
       console.log("[Server API] Dispatched operational ledger mirror entry to Google Sheets.");
     } catch (sheetErr) {
-      console.warn("[Server API] Sheets mirror dispatch notice:", sheetErr);
+      console.warn("[Server API] Sheets mirror dispatch notice (Firestore remains single source of truth):", sheetErr);
     }
 
     return NextResponse.json({
