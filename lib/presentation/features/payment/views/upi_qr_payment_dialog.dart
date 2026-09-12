@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/services/firebase_auth_service.dart';
+
+const String kGoogleSheetScriptUrl =
+    'https://script.google.com/macros/s/AKfycbwrW-LiBBsmj2MBqsCaHUw55oqqXuIqWndH5oUJk5OGtQDNu_bNYIP_yGys3J70U9te/exec';
 
 /// Modal dialog for UPI QR Code Payment with 5-Minute Expiry Countdown,
 /// Payment Screenshot Upload, and Online Ledger / Excel Sheet Sync.
@@ -125,6 +130,17 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
     };
 
     debugPrint('[Online Excel Sheet Sync] Dispatching record: $excelPayload');
+
+    try {
+      final response = await http.post(
+        Uri.parse(kGoogleSheetScriptUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(excelPayload),
+      );
+      debugPrint('[Online Excel Sheet Sync] Server response: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('[Online Excel Sheet Sync] HTTP dispatch error/notice: $e');
+    }
 
     setState(() {
       _isUploading = false;
