@@ -8,79 +8,83 @@ export default function Header() {
   return (
     <header
       style={{
-        backgroundColor: "rgba(44, 19, 32, 0.95)",
-        backdropFilter: "blur(12px)",
+        backgroundColor: "rgba(26, 11, 19, 0.92)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
         color: "#FFFFFF",
-        padding: "16px 24px",
+        padding: "clamp(12px, 2vw, 18px) clamp(16px, 4vw, 36px)",
         position: "sticky",
         top: 0,
         zIndex: 1000,
-        borderBottom: "1px solid rgba(212, 175, 55, 0.3)",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+        borderBottom: "1px solid rgba(212, 175, 55, 0.35)",
+        boxShadow: "0 8px 30px rgba(0, 0, 0, 0.3)",
       }}
     >
       <div
         style={{
-          maxWidth: "1200px",
+          maxWidth: "1280px",
           margin: "0 auto",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
+        {/* Brand Logo */}
         <a href="/" style={{ textDecoration: "none" }}>
           <h2
             style={{
-              fontFamily: "Playfair Display, serif",
-              color: "#D4AF37",
-              fontSize: "22px",
+              fontFamily: "'Playfair Display', serif",
+              color: "var(--rose-gold, #D4AF37)",
+              fontSize: "clamp(18px, 2.2vw, 24px)",
               margin: 0,
               letterSpacing: "1.5px",
+              fontWeight: "700",
             }}
           >
             MAKEOVERS BY PRACHI
           </h2>
-          <span style={{ fontSize: "11px", color: "#E8C5C8", display: "block", marginTop: "2px" }}>
+          <span style={{ fontSize: "11px", color: "#E8C5C8", display: "block", marginTop: "2px", letterSpacing: "0.5px" }}>
             Luxury Bridal & Occasion Artistry
           </span>
         </a>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation Bar */}
         <nav
           style={{
             display: "flex",
-            gap: "24px",
+            gap: "clamp(14px, 2vw, 28px)",
             alignItems: "center",
             fontSize: "14px",
             fontWeight: "500",
           }}
-          className="desktop-nav"
+          className="desktop-nav-container"
         >
-          <a href="/" style={{ color: "#FFFFFF", textDecoration: "none" }}>
+          <a href="/" style={{ color: "#FFFFFF", textDecoration: "none", transition: "color 0.2s" }}>
             Home
           </a>
-          <a href="/services" style={{ color: "#E5E0D8", textDecoration: "none" }}>
+          <a href="/services" style={{ color: "#E5E0D8", textDecoration: "none", transition: "color 0.2s" }}>
             Services & Rates
           </a>
-          <a href="/gallery" style={{ color: "#E5E0D8", textDecoration: "none" }}>
+          <a href="/gallery" style={{ color: "#E5E0D8", textDecoration: "none", transition: "color 0.2s" }}>
             Bridal Gallery
           </a>
-          <a href="/reviews" style={{ color: "#E5E0D8", textDecoration: "none" }}>
+          <a href="/reviews" style={{ color: "#E5E0D8", textDecoration: "none", transition: "color 0.2s" }}>
             Reviews (4.93★)
           </a>
-          <a href="/track" style={{ color: "#E5E0D8", textDecoration: "none" }}>
+          <a href="/track" style={{ color: "#E5E0D8", textDecoration: "none", transition: "color 0.2s" }}>
             Track Invoice
           </a>
           <a
             href="/book"
             style={{
-              background: "linear-gradient(135deg, #D4AF37, #AA7C11)",
+              background: "linear-gradient(135deg, #E6CA65 0%, #D4AF37 50%, #997B1E 100%)",
               color: "#2C1320",
               padding: "10px 22px",
-              borderRadius: "20px",
-              fontWeight: "bold",
+              borderRadius: "24px",
+              fontWeight: "700",
               textDecoration: "none",
-              boxShadow: "0 4px 12px rgba(212, 175, 55, 0.3)",
+              boxShadow: "0 4px 14px rgba(212, 175, 55, 0.4)",
+              transition: "transform 0.2s, boxShadow 0.2s",
             }}
           >
             Book Date →
@@ -90,16 +94,18 @@ export default function Header() {
         {/* Mobile Hamburger Button */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle menu"
           style={{
-            background: "none",
-            border: "1px solid #D4AF37",
+            background: "transparent",
+            border: "1.5px solid #D4AF37",
             color: "#D4AF37",
-            padding: "8px 12px",
-            borderRadius: "8px",
+            padding: "8px 14px",
+            borderRadius: "10px",
             cursor: "pointer",
-            fontSize: "16px",
+            fontSize: "18px",
+            display: "none",
           }}
-          className="mobile-hamburger"
+          className="mobile-hamburger-btn"
         >
           {mobileOpen ? "✕" : "☰"}
         </button>
@@ -110,11 +116,11 @@ export default function Header() {
         <div
           style={{
             marginTop: "16px",
-            paddingTop: "16px",
-            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+            paddingTop: "18px",
+            borderTop: "1px solid rgba(255, 255, 255, 0.12)",
             display: "flex",
             flexDirection: "column",
-            gap: "14px",
+            gap: "16px",
             fontSize: "15px",
           }}
         >
@@ -131,7 +137,7 @@ export default function Header() {
             ⭐ 4.93★ Client Reviews
           </a>
           <a href="/track" onClick={() => setMobileOpen(false)} style={{ color: "#E5E0D8", textDecoration: "none" }}>
-            🧾 Track Invoice & PDF
+            🧾 Track PDF Invoice
           </a>
           <a
             href="/book"
@@ -139,18 +145,29 @@ export default function Header() {
             style={{
               background: "linear-gradient(135deg, #D4AF37, #AA7C11)",
               color: "#2C1320",
-              padding: "12px 20px",
-              borderRadius: "20px",
+              padding: "14px 20px",
+              borderRadius: "24px",
               fontWeight: "bold",
               textDecoration: "none",
               textAlign: "center",
-              marginTop: "8px",
+              marginTop: "6px",
             }}
           >
             Book Your Date →
           </a>
         </div>
       )}
+
+      <style jsx>{`
+        @media (max-width: 868px) {
+          :global(.desktop-nav-container) {
+            display: none !important;
+          }
+          :global(.mobile-hamburger-btn) {
+            display: block !important;
+          }
+        }
+      `}</style>
     </header>
   );
 }

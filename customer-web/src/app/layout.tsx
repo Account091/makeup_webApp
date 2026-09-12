@@ -1,5 +1,6 @@
 import React from "react";
 import Header from "../components/Header";
+import "./globals.css";
 
 export const metadata = {
   title: "Makeovers by Prachi — Luxury Bridal & Occasion Artistry",
