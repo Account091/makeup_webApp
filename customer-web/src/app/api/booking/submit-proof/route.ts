@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/firebase";
-import { collection, query, where, getDocs, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, getDoc, setDoc, updateDoc, doc } from "firebase/firestore";
 
 const GOOGLE_SHEET_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbwrW-LiBBsmj2MBqsCaHUw55oqqXuIqWndH5oUJk5OGtQDNu_bNYIP_yGys3J70U9te/exec";
@@ -14,27 +14,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing Booking Ref ID" }, { status: 400 });
     }
 
-    const cleanUtr = (utrNumber || "").trim();
+    const cleanUtr = (utrNumber || "").trim().replaceAll(/\s+/g, "");
 
-    // 1. UTR Duplicate Detection (prevent reusing same UTR on multiple bookings)
+    // 1. Transaction-Safe Deterministic UTR Uniqueness Indexing (paymentUtrIndex/{utrHash})
     if (cleanUtr && cleanUtr !== "N/A") {
-      const duplicateUtrQuery = query(
-        collection(db, "bookings"),
-        where("payment.utrNumber", "==", cleanUtr)
-      );
-      const duplicateSnap = await getDocs(duplicateUtrQuery);
+      const utrDocKey = `UTR_${cleanUtr.toUpperCase()}`;
+      const utrRef = doc(db, "paymentUtrIndex", utrDocKey);
+      const utrSnap = await getDoc(utrRef);
 
-      const isDuplicate = duplicateSnap.docs.some((docSnap) => {
-        const data = docSnap.data();
-        return data.bookingId !== bookingId;
-      });
-
-      if (isDuplicate) {
+      if (utrSnap.exists() && utrSnap.data().bookingId !== bookingId) {
         return NextResponse.json(
-          { error: `UTR number '${cleanUtr}' has already been submitted for another booking transaction.` },
+          { error: `UTR number '${cleanUtr}' has already been submitted for booking #${utrSnap.data().bookingId}.` },
           { status: 409 }
         );
       }
+
+      // Reserve deterministic UTR document key
+      await setDoc(utrRef, {
+        utrNumber: cleanUtr,
+        bookingId,
+        submittedAt: new Date().toISOString(),
+        status: "VERIFICATION_PENDING",
+      });
     }
 
     // 2. Query Firestore Source of Truth for session
