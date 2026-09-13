@@ -667,4 +667,104 @@ export interface ProfileCompleteness {
   updatedAt: string;
 }
 
+// ===================================================
+// V8.5 MARKETPLACE RANKING & DISCOVERY DOMAIN MODELS
+// ===================================================
+
+export interface MarketplaceSearchQueryV85 {
+  locationId?: string;
+  serviceCategory?: string;
+  eventDate?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  verifiedOnly?: boolean;
+  sort?: "RECOMMENDED" | "RATING_HIGH" | "PRICE_LOW" | "PRICE_HIGH" | "EXPERIENCE";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface RankedListingResult {
+  listing: MarketplaceListing;
+  explanation: RankingExplanation;
+}
+
+export interface MarketplaceSearchResultV85 {
+  query: MarketplaceSearchQueryV85;
+  rankingVersion: string;
+  totalEligibleCount: number;
+  excludedCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  results: RankedListingResult[];
+}
+
+
+export interface RankingWeightConfig {
+  version: string;
+  weights: {
+    relevance: number; // e.g. 30
+    availability: number; // e.g. 20
+    trust: number; // e.g. 15
+    rating: number; // e.g. 15
+    responseRate: number; // e.g. 8
+    completionRate: number; // e.g. 7
+    locationMatch: number; // e.g. 5
+  };
+  minReviewThreshold: number; // Bayesian smoothing m factor (e.g. 5)
+  newProviderBoostPercent: number; // Cold start boost (e.g. 10%)
+  diversityOrgLimit: number; // Max listings per organization in top N (e.g. 2)
+  active: boolean;
+  updatedAt: string;
+  updatedByUid?: string;
+}
+
+export interface RankingExplanation {
+  listingId: string;
+  artistId: string;
+  organizationId: string;
+  totalScore: number;
+  breakdown: {
+    relevanceScore: number;
+    availabilityScore: number;
+    trustScore: number;
+    smoothedRatingScore: number;
+    responseScore: number;
+    completionScore: number;
+    locationScore: number;
+  };
+  isPromoted: boolean;
+  isNewProviderBoost: boolean;
+}
+
+export interface ListingPromotionRule {
+  promotionId: string;
+  listingId: string;
+  organizationId: string;
+  badgeLabel: string;
+  priority: number;
+  active: boolean;
+  expiresAt: string;
+}
+
+export interface MarketplaceSearchAlert {
+  alertId: string;
+  customerId: string;
+  locationId: string;
+  serviceCategory: string;
+  eventDate?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface CustomerPreferenceSignal {
+  customerId: string;
+  preferredServices: string[];
+  preferredLocations: string[];
+  preferredPriceRange: "BUDGET" | "MID" | "LUXURY" | "ALL";
+  updatedAt: string;
+}
+
+
 

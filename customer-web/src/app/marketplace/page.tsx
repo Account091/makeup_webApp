@@ -1,11 +1,11 @@
 import React from "react";
-import MarketplaceHomeScreen from "../../components/marketplace/MarketplaceHomeScreen";
+import MarketplaceSearchScreen from "../../components/marketplace/MarketplaceSearchScreen";
 
 export const metadata = {
-  title: "Beauty Marketplace | Discover Artists & Book Online",
-  description: "Browse verified bridal makeup artists, hair stylists, and beauty studios across Rajasthan & India on Makeovers by Prachi Marketplace.",
+  title: "Marketplace Search & Discovery | Rajasthan Makeup & Beauty",
+  description: "Find and book verified makeup artists and beauty services in Jodhpur, Jaipur, Udaipur, and destination weddings.",
 };
 
 export default function MarketplacePage() {
-  return <MarketplaceHomeScreen />;
+  return <MarketplaceSearchScreen />;
 }

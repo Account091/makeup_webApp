@@ -1,33 +1,44 @@
-import { NextRequest, NextResponse } from "next/server";
-import { searchMarketplace } from "../../../../lib/marketplace/marketplace-catalog-engine";
+import { NextResponse } from 'next/server';
+import { executeMarketplaceSearch } from '../../../../lib/marketplace/marketplace-search-engine';
 
-export async function GET(req: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const city = searchParams.get("city") || undefined;
-    const serviceCategory = searchParams.get("serviceCategory") || undefined;
-    const minPrice = searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined;
-    const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined;
-    const minRating = searchParams.get("minRating") ? Number(searchParams.get("minRating")) : undefined;
-    const verifiedOnly = searchParams.get("verifiedOnly") === "true";
+    const { searchParams } = new URL(request.url);
+    const locationId = searchParams.get('locationId') || undefined;
+    const serviceCategory = searchParams.get('serviceCategory') || undefined;
+    const eventDate = searchParams.get('eventDate') || undefined;
+    const minPrice = searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined;
+    const maxPrice = searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined;
+    const verifiedOnly = searchParams.get('verifiedOnly') === 'true';
+    const page = searchParams.get('page') ? Number(searchParams.get('page')) : 1;
+    const pageSize = searchParams.get('pageSize') ? Number(searchParams.get('pageSize')) : 10;
 
-    const results = searchMarketplace({
-      city,
+    const searchResult = executeMarketplaceSearch({
+      locationId,
       serviceCategory,
+      eventDate,
       minPrice,
       maxPrice,
-      minRating,
       verifiedOnly,
+      page,
+      pageSize
     });
 
     return NextResponse.json({
       success: true,
-      data: results,
+      searchResult
     });
   } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to search marketplace" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const searchResult = executeMarketplaceSearch(body);
+    return NextResponse.json({ success: true, searchResult });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
   }
 }
