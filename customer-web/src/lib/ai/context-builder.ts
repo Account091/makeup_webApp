@@ -228,7 +228,6 @@ Respond in JSON format:
   }
 
   if (feature === "CONTENT_DRAFTER") {
-    // 1. Fetch Controlled Brand Profile from settings/aiContentBrand
     let brandProfile = {
       brandName: "Makeovers by Prachi",
       tone: "Luxury, Royal Rajasthani, Sophisticated, Warm, Authoritative",
@@ -250,7 +249,6 @@ Respond in JSON format:
     }
     contextData.brandProfile = brandProfile;
 
-    // 2. Fetch Active Service Catalog from Firestore
     let serviceCatalog: any[] = [];
     try {
       const servicesSnap = await getDocs(collection(db, "services"));
@@ -305,6 +303,67 @@ Respond in JSON format with keys:
   "callToAction": "Book your bridal date today via WhatsApp or Website",
   "sourceReferences": ["service:royal-bridal", "brand:makeovers-by-prachi"],
   "requiresHumanApproval": true
+}`;
+
+    return { systemPrompt, contextData };
+  }
+
+  if (feature === "WHATSAPP_ASSISTANT") {
+    // 1. WhatsApp Customer Scoped Context Retrieval
+    const customerPhone = auth.customerId || auth.uid;
+    contextData.channel = "WHATSAPP";
+    contextData.customerPhone = customerPhone;
+
+    if (customerPhone && customerPhone !== "customer_guest") {
+      try {
+        const bookingsQ = query(
+          collection(db, "bookings"),
+          where("customerDetails.phone", "==", customerPhone),
+          limit(2)
+        );
+        const snap = await getDocs(bookingsQ);
+
+        if (!snap.empty) {
+          contextData.customerBookings = snap.docs.map((doc) => {
+            const d = doc.data();
+            return {
+              bookingId: d.bookingId || doc.id,
+              serviceTitle: d.serviceTitle || d.event?.type,
+              status: d.status,
+              eventDate: d.event?.date || d.eventDetails?.eventDate,
+              venue: d.event?.venue,
+              city: d.event?.city,
+              paymentStatus: d.status === "confirmed" ? "VERIFIED" : "VERIFICATION_PENDING",
+              totalAmount: d.commercials?.totalAmount || d.totalAmount || 25000,
+              depositPaid: d.commercials?.depositPaid || d.depositPaid || 7500,
+              utrNumber: d.paymentProof?.utr || d.paymentDetails?.utr,
+              aiScreeningStatus: d.paymentProof?.aiStatus || "SUCCESS",
+            };
+          });
+        }
+      } catch (e) {
+        console.warn("[ContextBuilder] WhatsApp customer context fetch fallback used:", e);
+      }
+    }
+
+    const systemPrompt = `You are the official AI WhatsApp Assistant for 'Makeovers by Prachi'.
+You reply to customer WhatsApp messages naturally, warmly, and accurately.
+
+AUTHORIZED WHATSAPP CUSTOMER CONTEXT:
+${JSON.stringify(contextData)}
+
+STRICT WHATSAPP SAFETY & BUSINESS BOUNDARIES:
+1. PAYMENT STATUS PROTECTION: If a customer asks about payment or says "I paid", check 'customerBookings'. If status is depositPendingVerification or VERIFICATION_PENDING, state: "Payment proof received. AI screening: SUCCESS. Amount detected: ₹7,500. Status: Awaiting manual verification by team." NEVER tell the customer payment is verified until status is strictly 'VERIFIED'.
+2. READ-ONLY BOUNDARY: You CANNOT confirm bookings, change dates, issue refunds, or modify prices directly. If a customer requests a date change or refund, respond warmly and set actionType to "HANDOFF_REQUIRED" or "RESCHEDULE_REQUEST".
+3. HUMAN ESCALATION / HANDOFF: For payment disputes, refund claims, angry complaints, or date change requests, indicate that a team member is taking over.
+
+REQUIRED RESPONSE FORMAT:
+Respond in JSON format:
+{
+  "answer": "Warm WhatsApp response message here...",
+  "sources": ["booking:BK-9021", "whatsapp:status"],
+  "requiresHumanAction": false,
+  "actionType": null
 }`;
 
     return { systemPrompt, contextData };

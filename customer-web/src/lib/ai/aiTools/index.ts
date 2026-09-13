@@ -15,6 +15,12 @@ import { getServicePerformanceTool } from "./getServicePerformance";
 import { getMarketingPerformanceTool } from "./getMarketingPerformance";
 import { getRevenueSummaryTool } from "./getRevenueSummary";
 import { getOperationalRisksTool } from "./getOperationalRisks";
+import { getBookingStatusTool } from "./getBookingStatus";
+import { getBookingScheduleTool } from "./getBookingSchedule";
+import { getPaymentStatusTool } from "./getPaymentStatus";
+import { getInvoiceTool } from "./getInvoice";
+import { getConsultationSummaryTool } from "./getConsultationSummary";
+import { getLoyaltyStatusTool } from "./getLoyaltyStatus";
 
 import { AiToolAuthorizationError } from "../ai-errors";
 
@@ -35,6 +41,12 @@ export const aiToolRegistry: Record<string, AiToolDefinition> = {
   getMarketingPerformance: getMarketingPerformanceTool,
   getRevenueSummary: getRevenueSummaryTool,
   getOperationalRisks: getOperationalRisksTool,
+  getBookingStatus: getBookingStatusTool,
+  getBookingSchedule: getBookingScheduleTool,
+  getPaymentStatus: getPaymentStatusTool,
+  getInvoice: getInvoiceTool,
+  getConsultationSummary: getConsultationSummaryTool,
+  getLoyaltyStatus: getLoyaltyStatusTool,
 };
 
 export async function executeAuthorizedTool(
