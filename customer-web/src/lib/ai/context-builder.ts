@@ -1,5 +1,5 @@
 import { db } from "../firebase";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/firestore";
 import { AiAuthContext, AiFeature } from "./types";
 
 export interface ContextBundle {
@@ -14,7 +14,6 @@ export async function buildRoleScopedContext(
   const contextData: Record<string, any> = {};
 
   if (feature === "CUSTOMER_CONCIERGE") {
-    // 1. Controlled Public Knowledge Layer (Dynamic Firestore Fetching)
     let fetchedServices: any[] = [];
     try {
       const servicesSnap = await getDocs(collection(db, "services"));
@@ -37,7 +36,6 @@ export async function buildRoleScopedContext(
     }
 
     if (fetchedServices.length === 0) {
-      // Fallback default catalog if Firestore services is empty
       fetchedServices = [
         {
           id: "service:royal-bridal",
@@ -84,7 +82,6 @@ export async function buildRoleScopedContext(
       },
     };
 
-    // 2. Private Customer Context Retrieval (STRICT ISOLATION)
     const customerIdentifier = auth.customerId || auth.uid;
     if (customerIdentifier && customerIdentifier !== "customer_guest" && customerIdentifier !== "guest_user") {
       try {
@@ -128,7 +125,6 @@ export async function buildRoleScopedContext(
       }
     }
 
-    // 3. System Prompt Construction
     const systemPrompt = `You are the AI Beauty Concierge for 'Makeovers by Prachi'.
 You provide helpful, elegant, and accurate answers about bridal makeup packages, preparation tips, travel policies, and customer booking details.
 
@@ -154,11 +150,9 @@ Respond in JSON format:
   }
 
   if (feature === "ADMIN_COPILOT") {
-    // Admin Operational Summary Context Builder
     contextData.userRole = auth.role;
     contextData.todayDate = new Date().toISOString().split("T")[0];
 
-    // Build current operational summary metrics
     contextData.todayOverview = {
       todayBookingsCount: 4,
       pendingPaymentsCount: 2,
@@ -234,9 +228,84 @@ Respond in JSON format:
   }
 
   if (feature === "CONTENT_DRAFTER") {
-    const systemPrompt = `You are the AI Content & Marketing Drafter for Makeovers by Prachi.
-You generate luxury Instagram captions, WhatsApp promotional messages, reel descriptions, and SEO metadata.
-All generated text is marked as DRAFT pending human approval before broadcast.`;
+    // 1. Fetch Controlled Brand Profile from settings/aiContentBrand
+    let brandProfile = {
+      brandName: "Makeovers by Prachi",
+      tone: "Luxury, Royal Rajasthani, Sophisticated, Warm, Authoritative",
+      serviceStyle: "Signature HD Airbrush & Royal Poshak Draping",
+      targetAudience: "Brides, Bridesmaids, Rajasthan Palace Weddings",
+      locations: ["Jaipur", "Jodhpur", "Udaipur", "Jaisalmer"],
+      approvedTerms: ["HD Airbrush", "Glass Skin Base", "Royal Poshak Draping", "Sweat-Proof Base", "Custom Lash Design"],
+      restrictedClaims: ["No medical/dermatological claims", "No guaranteed results", "No fake reviews", "No fake discounts", "No invented prices"],
+    };
+
+    try {
+      const brandDocRef = doc(db, "settings", "aiContentBrand");
+      const brandDocSnap = await getDoc(brandDocRef);
+      if (brandDocSnap.exists()) {
+        brandProfile = { ...brandProfile, ...brandDocSnap.data() };
+      }
+    } catch (e) {
+      console.warn("[ContextBuilder] aiContentBrand settings fetch fallback used:", e);
+    }
+    contextData.brandProfile = brandProfile;
+
+    // 2. Fetch Active Service Catalog from Firestore
+    let serviceCatalog: any[] = [];
+    try {
+      const servicesSnap = await getDocs(collection(db, "services"));
+      if (!servicesSnap.empty) {
+        serviceCatalog = servicesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      }
+    } catch (e) {
+      console.warn("[ContextBuilder] Services catalog fetch fallback used:", e);
+    }
+
+    if (serviceCatalog.length === 0) {
+      serviceCatalog = [
+        {
+          id: "royal-bridal",
+          title: "Signature Royal Bridal Makeover",
+          price: "₹25,000",
+          deposit: "₹7,500 (30% Lock)",
+          inclusions: ["HD Airbrushing / Glass Skin Base", "Custom Lash Design", "Royal Poshak Setting"],
+        },
+        {
+          id: "engagement",
+          title: "Pre-Wedding & Engagement Glam",
+          price: "₹15,000",
+          deposit: "₹4,500 (30% Lock)",
+          inclusions: ["Long-Wear HD Base", "Textured Updo", "Lehenga Draping"],
+        },
+      ];
+    }
+    contextData.serviceCatalog = serviceCatalog;
+
+    const systemPrompt = `You are the AI Content & Marketing Drafter for 'Makeovers by Prachi'.
+You generate luxury social media captions, Instagram reel scripts, WhatsApp promotions, website hero text, SEO copy, and marketing campaigns.
+
+BRAND PROFILE & AUTHORIZED CATALOG:
+${JSON.stringify(contextData)}
+
+STRICT SAFETY & CONTENT RULES:
+1. MANDATORY HUMAN APPROVAL: All generated copy is marked as DRAFT. It must NEVER auto-publish. Always set 'requiresHumanApproval' to true.
+2. NO INVENTED SERVICES OR PRICES: Use ONLY actual service titles, inclusions, and prices from 'serviceCatalog'. Never invent ₹35,000 packages or unapproved guarantees unless present in catalog!
+3. NO RESTRICTED CLAIMS: Prohibit medical/dermatological claims (e.g. "cures acne", "permanent skin treatment"), fake discounts, fake reviews, or fabricated certifications.
+4. HIGH-CONVERTING LUXURY COPY: Craft elegant, vibrant copy tailored for royal Indian & destination weddings.
+
+REQUIRED RESPONSE FORMAT:
+Respond in JSON format with keys:
+{
+  "title": "Short title or headline",
+  "body": "Main content body or reel script",
+  "caption": "Social caption text",
+  "hashtags": ["#BridalMakeup", "#JaipurBride", "#MakeoversByPrachi"],
+  "seoTitle": "SEO title tag (if applicable)",
+  "seoDescription": "SEO meta description (if applicable)",
+  "callToAction": "Book your bridal date today via WhatsApp or Website",
+  "sourceReferences": ["service:royal-bridal", "brand:makeovers-by-prachi"],
+  "requiresHumanApproval": true
+}`;
 
     return { systemPrompt, contextData };
   }

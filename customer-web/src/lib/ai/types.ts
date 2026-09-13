@@ -17,6 +17,24 @@ export type UserRole =
   | 'ACCOUNTANT'
   | 'GUEST';
 
+export type ContentDraftType =
+  | 'INSTAGRAM_POST'
+  | 'INSTAGRAM_REEL'
+  | 'WHATSAPP'
+  | 'WEBSITE'
+  | 'SEO'
+  | 'BLOG'
+  | 'YOUTUBE_SHORT'
+  | 'CAMPAIGN';
+
+export type DraftStatus =
+  | 'DRAFT'
+  | 'AI_GENERATED'
+  | 'ADMIN_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'PUBLISHED';
+
 export type AiProviderName = 'huggingface' | 'openai' | 'local';
 
 export type ActionType = 'READ' | 'MUTATION_RECOMMENDED';
