@@ -104,7 +104,8 @@ export default function MarketplaceSearchScreen() {
           locationId: query.locationId,
           serviceCategory: query.serviceCategory,
           maxPrice: query.maxPrice,
-          searchQueryText: naturalPrompt || query.keyword,
+          searchQueryText: naturalPrompt || "marketplace search",
+
         }),
       });
       const data = await res.json();
@@ -388,8 +389,9 @@ export default function MarketplaceSearchScreen() {
           <div
             style={{
               display: "flex",
-              justify: "space-between",
+              justifyContent: "space-between",
               alignItems: "center",
+
               marginBottom: 20,
               background: "#FFFFFF",
               padding: "16px 20px",
@@ -545,8 +547,9 @@ export default function MarketplaceSearchScreen() {
                         paddingTop: 12,
                         borderTop: "1px solid #F3F4F6",
                         display: "flex",
-                        justify: "space-between",
+                        justifyContent: "space-between",
                         alignItems: "center",
+
                       }}
                     >
                       <button
@@ -631,8 +634,9 @@ export default function MarketplaceSearchScreen() {
             <div
               style={{
                 display: "flex",
-                justify: "center",
+                justifyContent: "center",
                 alignItems: "center",
+
                 gap: 16,
                 marginTop: 24,
               }}

@@ -758,13 +758,103 @@ export interface MarketplaceSearchAlert {
   createdAt: string;
 }
 
-export interface CustomerPreferenceSignal {
+// ===================================================
+// V8.6 CUSTOMER ↔ ARTIST CHAT DOMAIN MODELS
+// ===================================================
+
+export type ConversationStatus = "ACTIVE" | "PAUSED" | "HUMAN_HANDOFF" | "CLOSED" | "BLOCKED";
+
+export type ConversationCreationSource = "MARKETPLACE_PROFILE" | "BOOKING_LINKED" | "DIRECT";
+
+export interface MarketplaceConversation {
+  conversationId: string;
+  organizationId: string;
   customerId: string;
-  preferredServices: string[];
-  preferredLocations: string[];
-  preferredPriceRange: "BUDGET" | "MID" | "LUXURY" | "ALL";
+  artistId: string;
+  bookingId?: string | null;
+  listingId?: string | null;
+  status: ConversationStatus;
+  createdFrom: ConversationCreationSource;
+  lastMessageAt: string;
+  lastMessageText?: string;
+  unreadForCustomer: number;
+  unreadForArtist: number;
+  createdAt: string;
   updatedAt: string;
 }
+
+export type SenderType = "CUSTOMER" | "ARTIST" | "ORGANIZATION" | "PLATFORM" | "AI";
+
+export type MessageType = "TEXT" | "IMAGE" | "DOCUMENT" | "SYSTEM" | "LOCATION_REFERENCE";
+
+export type SystemEventType =
+  | "BOOKING_CREATED"
+  | "CONSULTATION_SCHEDULED"
+  | "PAYMENT_VERIFIED"
+  | "EVENT_COMPLETED"
+  | "HUMAN_HANDOFF_TRIGGERED"
+  | "CONVERSATION_CLOSED";
+
+export interface MarketplaceMessage {
+  messageId: string;
+  conversationId: string;
+  organizationId: string;
+  senderType: SenderType;
+  senderId: string;
+  messageType: MessageType;
+  text: string;
+  mediaUrl?: string;
+  systemEventType?: SystemEventType;
+  status: "SENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
+  readAt?: string | null;
+  createdAt: string;
+  flaggedForModeration?: boolean;
+  moderationReason?: string;
+}
+
+export type ReportReason =
+  | "HARASSMENT"
+  | "SPAM"
+  | "FRAUD"
+  | "INAPPROPRIATE"
+  | "SAFETY"
+  | "POLICY_BYPASS"
+  | "OTHER";
+
+export interface ChatReport {
+  reportId: string;
+  conversationId: string;
+  reportedBy: string; // uid / customerId / artistId
+  reason: ReportReason;
+  description: string;
+  status: "PENDING" | "RESOLVED" | "DISMISSED";
+  createdAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+}
+
+export type ChatBlockType = "BLOCKED_BY_CUSTOMER" | "BLOCKED_BY_ARTIST" | "PLATFORM_BLOCKED";
+
+export interface ChatBlock {
+  blockId: string;
+  conversationId: string;
+  blockedBy: string;
+  blockType: ChatBlockType;
+  reason?: string;
+  createdAt: string;
+}
+
+export type AIMode = "AI_DISABLED" | "AI_SUGGEST" | "AI_AUTOREPLY" | "HUMAN_ONLY";
+
+export interface ChatAnalyticsMetric {
+  organizationId: string;
+  totalConversations: number;
+  totalMessages: number;
+  firstResponseTimeAvgMinutes: number;
+  chatToBookingConversionRate: number; // 0 - 100
+  updatedAt: string;
+}
+
 
 
 
