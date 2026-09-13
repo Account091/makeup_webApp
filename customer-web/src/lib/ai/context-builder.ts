@@ -11,7 +11,10 @@ export async function buildRoleScopedContext(
   feature: AiFeature,
   auth: AiAuthContext
 ): Promise<ContextBundle> {
-  const contextData: Record<string, any> = {};
+  const tenantOrg = auth.organizationId || "makeovers-by-prachi";
+  const contextData: Record<string, any> = {
+    tenantOrganizationId: tenantOrg,
+  };
 
   if (feature === "CUSTOMER_CONCIERGE") {
     let fetchedServices: any[] = [];
@@ -192,6 +195,8 @@ Respond in JSON format:
     ];
 
     const systemPrompt = `You are the Admin AI Copilot for 'Makeovers by Prachi'.
+TENANT ISOLATION BOUNDARY: Scoped strictly to Organization ID '${contextData.tenantOrganizationId}'.
+You MUST NOT retrieve, reveal, or process data belonging to any other organization.
 You provide high-level operational intelligence, CRM lead priority guidance, revenue summaries, calendar risk alerts, and support action recommendations to Prachi and authorized managers.
 
 ADMIN CONTEXT & SCOPE:
@@ -369,6 +374,9 @@ Respond in JSON format:
     return { systemPrompt, contextData };
   }
 
-  const systemPrompt = `You are an AI assistant for Makeovers by Prachi. Provide clear, helpful, role-scoped information.`;
+  const systemPrompt = `You are an AI assistant for Makeovers by Prachi.
+TENANT ISOLATION BOUNDARY: Scoped strictly to Organization ID '${tenantOrg}'.
+You MUST NOT retrieve, reveal, or process data belonging to any other organization.
+Provide clear, helpful, role-scoped information.`;
   return { systemPrompt, contextData };
 }
