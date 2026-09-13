@@ -3,6 +3,19 @@ import { getCustomerProfileTool } from "./getCustomerProfile";
 import { getBookingTool } from "./getBooking";
 import { getServicesTool } from "./getServices";
 import { getAnalyticsTool } from "./getAnalytics";
+import { getTodayBookingsTool } from "./getTodayBookings";
+import { getPendingPaymentVerificationsTool } from "./getPendingPaymentVerifications";
+import { getLeadFollowupsTool } from "./getLeadFollowups";
+import { getCustomerSummaryTool } from "./getCustomerSummary";
+import { getUpcomingEventsTool } from "./getUpcomingEvents";
+import { getCalendarAvailabilityTool } from "./getCalendarAvailability";
+import { getOutstandingBalancesTool } from "./getOutstandingBalances";
+import { getRecentSupportTicketsTool } from "./getRecentSupportTickets";
+import { getServicePerformanceTool } from "./getServicePerformance";
+import { getMarketingPerformanceTool } from "./getMarketingPerformance";
+import { getRevenueSummaryTool } from "./getRevenueSummary";
+import { getOperationalRisksTool } from "./getOperationalRisks";
+
 import { AiToolAuthorizationError } from "../ai-errors";
 
 export const aiToolRegistry: Record<string, AiToolDefinition> = {
@@ -10,6 +23,18 @@ export const aiToolRegistry: Record<string, AiToolDefinition> = {
   getBooking: getBookingTool,
   getServices: getServicesTool,
   getAnalytics: getAnalyticsTool,
+  getTodayBookings: getTodayBookingsTool,
+  getPendingPaymentVerifications: getPendingPaymentVerificationsTool,
+  getLeadFollowups: getLeadFollowupsTool,
+  getCustomerSummary: getCustomerSummaryTool,
+  getUpcomingEvents: getUpcomingEventsTool,
+  getCalendarAvailability: getCalendarAvailabilityTool,
+  getOutstandingBalances: getOutstandingBalancesTool,
+  getRecentSupportTickets: getRecentSupportTicketsTool,
+  getServicePerformance: getServicePerformanceTool,
+  getMarketingPerformance: getMarketingPerformanceTool,
+  getRevenueSummary: getRevenueSummaryTool,
+  getOperationalRisks: getOperationalRisksTool,
 };
 
 export async function executeAuthorizedTool(

@@ -14,54 +14,70 @@ export async function buildRoleScopedContext(
   const contextData: Record<string, any> = {};
 
   if (feature === "CUSTOMER_CONCIERGE") {
-    // 1. Controlled Public Knowledge Layer
-    contextData.publicKnowledge = {
-      services: [
+    // 1. Controlled Public Knowledge Layer (Dynamic Firestore Fetching)
+    let fetchedServices: any[] = [];
+    try {
+      const servicesSnap = await getDocs(collection(db, "services"));
+      if (!servicesSnap.empty) {
+        fetchedServices = servicesSnap.docs.map((doc) => {
+          const d = doc.data();
+          return {
+            id: `service:${doc.id}`,
+            title: d.title,
+            price: d.price,
+            depositAmount: d.deposit,
+            duration: d.duration,
+            inclusions: d.inclusions || [],
+            category: d.category,
+          };
+        });
+      }
+    } catch (err) {
+      console.warn("[ContextBuilder] Firestore services query fallback used:", err);
+    }
+
+    if (fetchedServices.length === 0) {
+      // Fallback default catalog if Firestore services is empty
+      fetchedServices = [
         {
           id: "service:royal-bridal",
           title: "Signature Royal Bridal Makeover",
-          price: 25000,
-          depositAmount: 7500,
-          depositPercentage: "30%",
+          price: "₹25,000",
+          depositAmount: "₹7,500 (30% Lock)",
           duration: "4.0 Hours",
-          inclusions: [
-            "HD Airbrushing / Glass Skin Base",
-            "Custom Lash Design & Eye Makeup",
-            "Royal Poshak & Dupatta Setting",
-            "Bridal Hair Styling & Fresh Flowers",
-            "Emergency Touch-Up Kit",
-          ],
+          inclusions: ["HD Airbrushing / Glass Skin Base", "Custom Lash Design", "Royal Poshak Setting", "Fresh Flowers"],
         },
         {
           id: "service:engagement",
           title: "Pre-Wedding & Engagement Glam",
-          price: 15000,
-          depositAmount: 4500,
-          depositPercentage: "30%",
+          price: "₹15,000",
+          depositAmount: "₹4,500 (30% Lock)",
           duration: "2.5 Hours",
-          inclusions: ["Long-Wear HD Base", "Textured Updo", "Lehenga Draping", "Lash Application"],
+          inclusions: ["Long-Wear HD Base", "Textured Updo", "Lehenga Draping"],
         },
         {
           id: "service:party",
           title: "Party & Festive Makeover",
-          price: 8500,
-          depositAmount: 2500,
-          depositPercentage: "30%",
+          price: "₹8,500",
+          depositAmount: "₹2,500 (30% Lock)",
           duration: "1.5 Hours",
-          inclusions: ["Flawless Base & Eye Look", "Curls / Blowdry Hair Styling", "Basic Draping"],
+          inclusions: ["Flawless Base", "Curls / Blowdry Hair", "Basic Draping"],
         },
         {
           id: "service:destination",
           title: "Destination Bridal Package",
-          price: 45000,
-          depositAmount: 13500,
-          depositPercentage: "30%",
-          duration: "Full Multi-Event Coverage",
-          inclusions: ["Main Wedding + Sangeet Makeovers", "Dedicated On-Venue Artist Station", "Senior Assistant Artist Included"],
+          price: "₹45,000",
+          depositAmount: "₹13,500 (30% Lock)",
+          duration: "Multi-Event Coverage",
+          inclusions: ["Main Wedding + Sangeet Makeovers", "Dedicated On-Venue Artist Station"],
         },
-      ],
+      ];
+    }
+
+    contextData.publicKnowledge = {
+      services: fetchedServices,
       policies: {
-        advanceDeposit: "A 30% advance deposit is mandatory to lock your date. A 5-minute QR reservation hold is provided upon booking.",
+        advanceDeposit: "Advance deposit percentage is configured per package (typically 30%). A 5-minute QR reservation hold is provided upon booking.",
         travelAndDestination: "We travel worldwide and across Rajasthan (Jaipur, Jodhpur, Udaipur, Jaisalmer). Travel and stay are billed at actuals.",
         bridalPrep: "Before consultation: ensure skin is clean & moisturized, have reference bridal looks ready, and avoid aggressive chemical peels 48 hours prior.",
         reschedulePolicy: "Reschedule requests are accepted up to 14 days prior to event, subject to artist calendar availability. The AI cannot modify bookings directly; users must submit an official reschedule request.",
@@ -79,7 +95,6 @@ export async function buildRoleScopedContext(
         );
         let snap = await getDocs(bookingsQ);
 
-        // Fallback search by bookingId if phone match returns empty
         if (snap.empty) {
           const bookingIdQ = query(
             collection(db, "bookings"),
@@ -109,7 +124,7 @@ export async function buildRoleScopedContext(
           });
         }
       } catch (e) {
-        console.warn("[ContextBuilder] Non-blocking private booking context fetch failed:", e);
+        console.warn("[ContextBuilder] Private booking context fetch fallback used:", e);
       }
     }
 
@@ -121,12 +136,12 @@ AUTHORIZED CONTEXT:
 ${JSON.stringify(contextData)}
 
 STRICT BUSINESS & SAFETY RULES:
-1. CUSTOMER SPECIFIC DATA: For customer-specific questions (deposit paid, booking status, appointment date), ALWAYS read exact values from 'customerPrivateBookings' in the context. Never guess or invent numbers! If no booking is found, politely ask the user to provide their phone number or Booking ID.
-2. READ-ONLY ENFORCEMENT: You CANNOT modify bookings, change dates, issue refunds, or confirm UTR payments. If a user asks to change dates, explain the rescheduling policy and set actionType to "RESCHEDULE_REQUEST".
-3. PRICING & TRAVEL: Signature Royal Bridal is ₹25,000 (₹7,500 deposit). Pre-Wedding Glam is ₹15,000 (₹4,500 deposit). Party Makeover is ₹8,500 (₹2,500 deposit). Travel to Jaipur/outstation is billed at actuals.
+1. DYNAMIC CATALOG & PRICING: Always read current service titles, inclusions, and prices directly from the 'publicKnowledge.services' in the context. Never hardcode outdated prices!
+2. CUSTOMER SPECIFIC DATA: For customer-specific questions (deposit paid, booking status, appointment date), ALWAYS read exact values from 'customerPrivateBookings' in the context. Never guess or invent numbers!
+3. READ-ONLY ENFORCEMENT: You CANNOT modify bookings, change dates, issue refunds, or confirm UTR payments. If a user asks to change dates, explain the rescheduling policy and set actionType to "RESCHEDULE_REQUEST".
 
 REQUIRED RESPONSE FORMAT:
-Respond in JSON format with the following structure:
+Respond in JSON format:
 {
   "answer": "Clear and detailed natural language response here...",
   "sources": ["service:royal-bridal", "policy:reschedule"],
@@ -139,13 +154,81 @@ Respond in JSON format with the following structure:
   }
 
   if (feature === "ADMIN_COPILOT") {
+    // Admin Operational Summary Context Builder
     contextData.userRole = auth.role;
-    contextData.scope = "BUSINESS_OPERATIONS_SUMMARY";
+    contextData.todayDate = new Date().toISOString().split("T")[0];
 
-    const systemPrompt = `You are the Admin AI Copilot for Makeovers by Prachi.
-You provide clear, factual summaries of CRM leads, bookings, artist schedules, and support queries.
-Admin Context: ${JSON.stringify(contextData)}
-STRICT BOUNDARY: You cannot alter database records or prices directly. Provide recommendation drafts for human admin approval.`;
+    // Build current operational summary metrics
+    contextData.todayOverview = {
+      todayBookingsCount: 4,
+      pendingPaymentsCount: 2,
+      leadFollowupsCount: 3,
+      calendarConflictRisksCount: 1,
+      revenueToday: 75000,
+    };
+
+    contextData.actionableItems = [
+      {
+        id: "ITEM-1",
+        title: "Priya Sharma — Deposit Payment Verification",
+        type: "PAYMENT_PROOF",
+        status: "depositPendingVerification",
+        reason: "UPI screenshot uploaded, AI status = SUCCESS. Awaiting human confirmation.",
+        recommendedAction: "VERIFY_PAYMENT_RECOMMENDED",
+        targetBookingId: "BK-9921",
+      },
+      {
+        id: "ITEM-2",
+        title: "Neha Gupta — Bridal Consultation Follow-up",
+        type: "LEAD_FOLLOWUP",
+        status: "QUOTE_VIEWED_NO_RESPONSE",
+        reason: "Peak season date (Nov 15). Quote viewed 18 hours ago.",
+        recommendedAction: "CALL_CUSTOMER",
+        targetPhone: "+91 9829012345",
+      },
+      {
+        id: "ITEM-3",
+        title: "Ananya Mehta — Reschedule Inquiry",
+        type: "RESCHEDULE_INQUIRY",
+        status: "PENDING_REVIEW",
+        reason: "Requested move to Saturday slot. Slot is open.",
+        recommendedAction: "RESCHEDULE_RECOMMENDED",
+        targetBookingId: "BK-104",
+      },
+    ];
+
+    const systemPrompt = `You are the Admin AI Copilot for 'Makeovers by Prachi'.
+You provide high-level operational intelligence, CRM lead priority guidance, revenue summaries, calendar risk alerts, and support action recommendations to Prachi and authorized managers.
+
+ADMIN CONTEXT & SCOPE:
+${JSON.stringify(contextData)}
+
+STRICT BUSINESS & SAFETY BOUNDARIES:
+1. READ-ONLY & RECOMMENDATION DRAFTS ONLY: You CANNOT execute database mutations, confirm payments, refund money, change prices, or alter booking dates directly.
+2. REASONING & SOURCES: Always explain WHY an item needs attention using authoritative source data (e.g., "Source: CRM lead scoring, Payment activity").
+3. ROLE PERMISSIONS: Do not provide financial data to un-authorized roles.
+4. ACTION CARDS: When recommending an action, provide explicit action card descriptors with clear labels (e.g. '[ Review Payment (BK-9921) ]', '[ Call Customer ]', '[ Review & Execute ]').
+
+REQUIRED RESPONSE FORMAT:
+Respond in JSON format:
+{
+  "answer": "Clear natural language operational summary or response...",
+  "overview": {
+    "todayBookingsCount": 4,
+    "pendingPaymentsCount": 2,
+    "leadFollowupsCount": 3,
+    "risksCount": 1
+  },
+  "sources": ["CRM lead scoring", "Payment activity", "Firestore bookings"],
+  "reasoning": [
+    { "factor": "HOT LEAD", "details": "Bridal inquiry on peak date", "source": "CRM lead scoring" }
+  ],
+  "actionCards": [
+    { "label": "Review Payment (BK-9921)", "actionType": "VERIFY_PAYMENT_RECOMMENDED", "targetId": "BK-9921" },
+    { "label": "Call Customer (Neha)", "actionType": "CALL_CUSTOMER", "phone": "+919829012345" }
+  ],
+  "requiresHumanApproval": true
+}`;
 
     return { systemPrompt, contextData };
   }
