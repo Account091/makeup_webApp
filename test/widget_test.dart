@@ -34,41 +34,57 @@ Widget createTestableWidget(Widget child) {
 
 void main() {
   testWidgets('AdminDashboardScreen renders dashboard widget', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1024);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(createTestableWidget(const AdminDashboardScreen()));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.byType(AdminDashboardScreen), findsOneWidget);
   });
 
   testWidgets('CustomerCrmScreen renders CRM widget', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1024);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(createTestableWidget(const CustomerCrmScreen()));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.byType(CustomerCrmScreen), findsOneWidget);
   });
 
   testWidgets('ServiceCatalogScreen renders catalog widget', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1024);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(createTestableWidget(const ServiceCatalogScreen()));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.byType(ServiceCatalogScreen), findsOneWidget);
   });
 
   testWidgets('SettingsScreen renders settings widget', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1024);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(createTestableWidget(const SettingsScreen()));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.byType(SettingsScreen), findsOneWidget);
   });
 
   testWidgets('BookingInquiryScreen renders inquiry widget', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 1024);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
     await tester.pumpWidget(createTestableWidget(const BookingInquiryScreen()));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.byType(BookingInquiryScreen), findsOneWidget);
   });
 }
-
-
-
-

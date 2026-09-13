@@ -5,36 +5,64 @@ import { AiAuthContext } from "../../../../lib/ai/types";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { userPrompt, eventType, skinType, authPayload } = body;
+    const { userPrompt, chatHistory, eventType, skinType, authPayload } = body;
 
-    if (!userPrompt) {
-      return NextResponse.json({ error: "Missing required field 'userPrompt'" }, { status: 400 });
+    if (!userPrompt && (!chatHistory || chatHistory.length === 0)) {
+      return NextResponse.json(
+        { error: "Missing required field 'userPrompt' or 'chatHistory'" },
+        { status: 400 }
+      );
     }
 
+    const customerId = authPayload?.customerId || authPayload?.phone || authPayload?.uid || "customer_guest";
+
     const auth: AiAuthContext = {
-      uid: authPayload?.uid || "customer_guest",
+      uid: authPayload?.uid || customerId,
       role: "CUSTOMER",
       organizationId: "makeovers_by_prachi",
-      customerId: authPayload?.customerId || authPayload?.uid,
-      requestId: `req_concierge_${Date.now()}`,
+      customerId: customerId,
+      requestId: `req_concierge_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     };
 
-    const messages = [
-      {
-        role: "user" as const,
-        content: `Event Context: Event='${eventType || "Bridal"}', SkinType='${skinType || "Combination"}'.\nQuery: ${userPrompt}`,
-      },
-    ];
+    const messages = [];
 
-    const result = await handleAIRequest({
-      feature: "CUSTOMER_CONCIERGE",
-      messages,
-      auth,
-    });
+    if (chatHistory && Array.isArray(chatHistory)) {
+      messages.push(...chatHistory);
+    }
+
+    if (userPrompt) {
+      let promptContent = userPrompt;
+      if (eventType || skinType) {
+        promptContent = `[Event context: Event='${eventType || "Bridal"}', SkinType='${skinType || "Normal"}']\n${userPrompt}`;
+      }
+      messages.push({
+        role: "user" as const,
+        content: promptContent,
+      });
+    }
+
+    const result = await handleAIRequest(
+      {
+        feature: "CUSTOMER_CONCIERGE",
+        messages,
+        auth,
+      },
+      true // Require structured JSON output
+    );
+
+    const structured = result.structuredResponse;
 
     return NextResponse.json({
       success: true,
-      recommendation: result.content,
+      answer: structured?.answer || result.content,
+      sources: structured?.data?.sources || ["service:royal-bridal", "policy:general-concierge"],
+      recommendations: structured?.data?.recommendations || [
+        "Bridal packages & pricing",
+        "Check my booking status",
+        "Jaipur travel policy",
+      ],
+      requiresHumanAction: structured?.requiresHumanApproval || false,
+      actionType: structured?.recommendedMutationAction?.actionType || null,
       providerUsed: result.provider,
       modelUsed: result.model,
       requestId: result.requestId,
