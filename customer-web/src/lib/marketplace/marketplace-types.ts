@@ -374,3 +374,146 @@ export interface MarketplaceSearchQuery {
   minExperience?: number;
   verifiedOnly?: boolean;
 }
+
+// ==========================================
+// V8.3 SETTLEMENTS & PAYOUTS DOMAIN MODELS
+// ==========================================
+
+export type SettlementStatusV83 =
+  | "CALCULATING"
+  | "READY"
+  | "APPROVED"
+  | "PROCESSING"
+  | "PAID"
+  | "FAILED"
+  | "ON_HOLD"
+  | "CANCELLED"
+  | "REVERSED";
+
+export type SettlementPeriodCadence = "WEEKLY" | "BIWEEKLY" | "MONTHLY" | "MANUAL";
+
+export interface SettlementPeriod {
+  periodId: string;
+  name: string;
+  cadence: SettlementPeriodCadence;
+  periodStart: string;
+  periodEnd: string;
+  timezone: string;
+}
+
+export interface Settlement {
+  settlementId: string;
+  organizationId: string;
+  artistId: string;
+  periodId: string;
+  grossEarnings: number;
+  adjustments: number;
+  holds: number;
+  eligibleAmount: number;
+  payoutAmount: number;
+  currency: string;
+  status: SettlementStatusV83;
+  preparedByUid?: string;
+  approvedByUid?: string;
+  payoutReference?: string;
+  paidAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SettlementItem {
+  itemId: string;
+  settlementId: string;
+  artistEarningsTransactionId: string;
+  bookingId: string;
+  grossAmount: number;
+  artistShare: number;
+  adjustment: number;
+  eligibleAmount: number;
+}
+
+export type HoldReason =
+  | "OPEN_DISPUTE"
+  | "REFUND_WINDOW"
+  | "RISK_REVIEW"
+  | "MISSING_BANK_DETAILS"
+  | "COMPLIANCE_REVIEW"
+  | "MANUAL_HOLD";
+
+export interface SettlementHold {
+  holdId: string;
+  artistId: string;
+  organizationId: string;
+  bookingId?: string;
+  amount: number;
+  holdReason: HoldReason;
+  createdByUid: string;
+  createdAt: string;
+  expiresAt?: string;
+  releasedByUid?: string;
+  releasedAt?: string;
+  active: boolean;
+}
+
+export type PayoutMethod = "BANK_TRANSFER" | "UPI" | "MANUAL" | "FUTURE_PROVIDER";
+
+export interface ArtistPayoutProfile {
+  artistId: string;
+  organizationId: string;
+  payoutMethod: PayoutMethod;
+  accountStatus: "VERIFIED" | "PENDING_VERIFICATION" | "UNVERIFIED" | "REJECTED";
+  providerCustomerId?: string;
+  providerAccountId?: string;
+  maskedAccountReference: string;
+  bankName?: string;
+  ifscCode?: string;
+  upiVpa?: string;
+  verifiedAt?: string;
+}
+
+export type PayoutStatus =
+  | "CREATED"
+  | "PROCESSING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "REVERSED";
+
+export interface Payout {
+  payoutId: string;
+  settlementId: string;
+  organizationId: string;
+  artistId: string;
+  amount: number;
+  currency: string;
+  payoutMethod: PayoutMethod;
+  providerId: string;
+  idempotencyKey: string;
+  status: PayoutStatus;
+  payoutReference?: string;
+  processedAt?: string;
+  processedByUid?: string;
+  failureReason?: string;
+}
+
+export interface PayoutTransaction {
+  id: string;
+  organizationId: string;
+  artistId: string;
+  settlementId: string;
+  payoutId: string;
+  amount: number;
+  currency: string;
+  transactionType: "PAYOUT" | "PAYOUT_REVERSAL" | "FEE";
+  status: PayoutStatus;
+  payoutReference?: string;
+  createdAt: string;
+}
+
+export interface PayoutRules {
+  minimumPayoutAmount: number;
+  currency: string;
+  autoApproveThreshold: number;
+  dualControlRequired: boolean;
+}
+
