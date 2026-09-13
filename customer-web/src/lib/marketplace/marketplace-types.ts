@@ -517,3 +517,154 @@ export interface PayoutRules {
   dualControlRequired: boolean;
 }
 
+// ==========================================
+// V8.4 TRUST, REVIEWS & VERIFICATION MODELS
+// ==========================================
+
+export type VerificationStatusV84 =
+  | "UNVERIFIED"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "VERIFIED"
+  | "REJECTED"
+  | "SUSPENDED"
+  | "EXPIRED";
+
+export type VerificationArea =
+  | "IDENTITY"
+  | "PROFESSIONAL_PROFILE"
+  | "PORTFOLIO"
+  | "SERVICE_INFORMATION"
+  | "BUSINESS_ASSOCIATION";
+
+export interface OrganizationVerificationRecord {
+  id: string;
+  organizationId: string;
+  verificationType: "BUSINESS_TAX" | "IDENTITY_PORTFOLIO";
+  status: VerificationStatusV84;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedByUid?: string;
+  verificationVersion: number;
+  expiryDate?: string;
+  evidenceIds: string[];
+}
+
+export interface ArtistVerificationRecord {
+  id: string;
+  artistId: string;
+  organizationId: string;
+  verificationAreas: VerificationArea[];
+  status: VerificationStatusV84;
+  submittedAt: string;
+  reviewedAt?: string;
+  verifiedBadgeActive: boolean;
+}
+
+export interface VerificationEvidence {
+  id: string;
+  verificationId: string;
+  type: string;
+  storagePath: string;
+  submittedAt: string;
+  reviewedAt?: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+}
+
+export type ReviewModerationStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "FLAGGED"
+  | "HIDDEN";
+
+export type ReviewFlagReason =
+  | "SPAM"
+  | "ABUSE"
+  | "PERSONAL_INFORMATION"
+  | "FALSE_CLAIM"
+  | "IRRELEVANT"
+  | "THREAT"
+  | "OTHER";
+
+export interface MarketplaceReviewV84 {
+  reviewId: string;
+  bookingId: string;
+  customerId: string;
+  artistId: string;
+  organizationId: string;
+  rating: number; // 1 to 5
+  qualityRating?: number;
+  punctualityRating?: number;
+  communicationRating?: number;
+  professionalismRating?: number;
+  reviewText: string;
+  verifiedBooking: boolean;
+  moderationStatus: ReviewModerationStatus;
+  createdAt: string;
+}
+
+export interface ReviewFlag {
+  flagId: string;
+  reviewId: string;
+  flaggedByUid: string;
+  flagReason: ReviewFlagReason;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface ReviewResponse {
+  responseId: string;
+  reviewId: string;
+  organizationId: string;
+  artistId: string;
+  responseText: string;
+  moderationStatus: ReviewModerationStatus;
+  createdAt: string;
+}
+
+export interface TrustScoreRecordV84 {
+  organizationId: string;
+  artistId: string;
+  overallTrustScore: number; // 0 - 100
+  factors: {
+    verificationScore: number; // 0-100
+    completionRatePercent: number; // 0-100
+    averageRating: number; // 1-5
+    responseRatePercent: number; // 0-100
+    cancellationRatePercent: number; // 0-100
+  };
+  badge: "VERIFIED_PRO" | "TOP_RATED" | "RISING_STAR" | "STANDARD";
+  version: string;
+  updatedAt: string;
+}
+
+export type TrustAlertType =
+  | "RATING_DROP"
+  | "CANCELLATION_SPIKE"
+  | "COMPLAINT_SPIKE"
+  | "REVIEW_FLAG_SPIKE"
+  | "VERIFICATION_EXPIRING"
+  | "RESPONSE_RATE_DROP"
+  | "DISPUTE_SPIKE";
+
+export interface TrustAlert {
+  alertId: string;
+  organizationId: string;
+  artistId?: string;
+  alertType: TrustAlertType;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  message: string;
+  resolved: boolean;
+  createdAt: string;
+}
+
+export interface ProfileCompleteness {
+  organizationId: string;
+  artistId?: string;
+  completenessPercent: number; // 0 - 100
+  missingItems: string[];
+  updatedAt: string;
+}
+
+
