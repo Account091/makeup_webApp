@@ -847,6 +847,7 @@ export interface ChatBlock {
 export type AIMode = "AI_DISABLED" | "AI_SUGGEST" | "AI_AUTOREPLY" | "HUMAN_ONLY";
 
 export interface ChatAnalyticsMetric {
+
   organizationId: string;
   totalConversations: number;
   totalMessages: number;
@@ -854,6 +855,136 @@ export interface ChatAnalyticsMetric {
   chatToBookingConversionRate: number; // 0 - 100
   updatedAt: string;
 }
+
+// ===================================================
+// V8.8 MARKETPLACE ANALYTICS DOMAIN MODELS
+// ===================================================
+
+
+export interface MarketplaceExecutiveKPIs {
+  period: string;
+  gmv: number;
+  platformRevenue: number;
+  artistEarnings: number;
+  takeRatePercent: number;
+  totalMarketplaceBookings: number;
+  activeOrganizations: number;
+  activeArtists: number;
+  totalCustomers: number;
+  cancellationRatePercent: number;
+  disputeRatePercent: number;
+  dataAsOf: string;
+}
+
+export interface MarketplaceFunnelMetrics {
+  period: string;
+  marketplaceVisits: number;
+  searches: number;
+  artistProfileViews: number;
+  chatsStarted: number;
+  bookingRequests: number;
+  paymentsVerified: number;
+  bookingsCompleted: number;
+  reviewsSubmitted: number;
+  searchToProfileRatePercent: number;
+  profileToChatRatePercent: number;
+  chatToBookingRatePercent: number;
+  overallConversionRatePercent: number;
+}
+
+export interface ZeroResultDemandRecord {
+  locationId: string;
+  serviceCategory: string;
+  requestedDate?: string;
+  searchCount: number;
+  eligibleResultsCount: number;
+  demandTag: "ZERO_RESULT_DEMAND" | "CAPACITY_SHORTAGE";
+  lastSearchedAt: string;
+}
+
+export interface SupplyDemandAnalysis {
+  locationId: string;
+  serviceCategory: string;
+  searchDemandCount: number;
+  eligibleActiveArtists: number;
+  demandPressureTag: "HIGH_DEMAND_LOW_SUPPLY" | "BALANCED" | "SURPLUS_SUPPLY";
+  ratio: number;
+}
+
+export interface GeographyMetrics {
+  locationId: string;
+  locationName: string;
+  gmv: number;
+  bookingsCount: number;
+  activeArtistsCount: number;
+  conversionRatePercent: number;
+  demandLevel: "HIGH" | "MEDIUM" | "LOW";
+}
+
+export interface ServiceLocationMatrixCell {
+  serviceCategory: string;
+  locationId: string;
+  demandLabel: "VERY_HIGH" | "HIGH" | "MEDIUM" | "LOW";
+  gmv: number;
+}
+
+export interface MarketplaceHealthScore {
+  overallScore: number; // 0 - 100
+  version: string;
+  factors: {
+    supplyDemandBalanceScore: number;
+    conversionHealthScore: number;
+    disputeSafetyScore: number;
+    ratingTrustScore: number;
+    paymentSuccessScore: number;
+  };
+  calculatedAt: string;
+}
+
+export type MarketplaceAlertType =
+  | "GMV_DROP"
+  | "CONVERSION_DROP"
+  | "ZERO_RESULT_SPIKE"
+  | "SUPPLY_SHORTAGE"
+  | "DISPUTE_SPIKE"
+  | "CANCELLATION_SPIKE"
+  | "RATING_DROP"
+  | "PAYMENT_FAILURE_SPIKE";
+
+export interface MarketplaceAnalyticsAlert {
+  alertId: string;
+  alertType: MarketplaceAlertType;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  locationId?: string;
+  serviceCategory?: string;
+  message: string;
+  metricValue: number;
+  thresholdValue: number;
+  createdAt: string;
+}
+
+export interface MarketplaceValidationReport {
+  reconciled: boolean;
+  discrepancyAmount: number; // Target $0
+  totalBookingGMV: number;
+  totalPaymentLedger: number;
+  totalCommissionLedger: number;
+  totalArtistEarnings: number;
+  totalSettlementBatches: number;
+  orphanedRecordsCount: number;
+  healthWarnings: string[];
+  validatedAt: string;
+}
+
+export interface MarketplaceCohortMetrics {
+  cohortMonth: string; // e.g. "2026-09"
+  initialCustomerCount: number;
+  retentionMonth1Percent: number;
+  retentionMonth2Percent: number;
+  retentionMonth3Percent: number;
+  totalRevenueGenerated: number;
+}
+
 
 
 
