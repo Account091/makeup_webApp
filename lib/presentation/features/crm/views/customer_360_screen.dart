@@ -115,12 +115,34 @@ class Customer360Screen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _buildStat('Total Bookings', '2'),
-          _buildStat('Total Spent', '₹35,500'),
-          _buildStat('LTV Score', '9.4 / 10'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStat('Total Bookings', '2'),
+              _buildStat('Total Spent', '₹35,500'),
+              _buildStat('Health Score', '88 / 100'),
+            ],
+          ),
+          const Divider(color: Colors.white12, height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.health_and_safety_outlined, color: Colors.greenAccent, size: 16),
+                  SizedBox(width: 6),
+                  Text('Classification: HEALTHY', style: TextStyle(color: Colors.lightGreenAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
+                child: const Text('RELIABILITY: 100%', style: TextStyle(color: Colors.lightGreenAccent, fontSize: 9, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         ],
       ),
     );
