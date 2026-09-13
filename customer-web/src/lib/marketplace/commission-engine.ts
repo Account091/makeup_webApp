@@ -9,10 +9,13 @@ import {
 const commissionRules: CommissionRule[] = [
   {
     ruleId: "rule_v1_default",
-    version: "1.0",
+    category: "STANDARD",
+    version: 1,
     platformPercent: 10,
     gatewayPercent: 2,
     artistPercent: 88,
+    commissionBaseType: "GROSS_AFTER_DISCOUNT",
+    recognitionEvent: "PAYMENT_VERIFIED",
     active: true,
     effectiveFrom: "2026-01-01T00:00:00.000Z",
   },
@@ -26,11 +29,17 @@ const commissionLedger: CommissionTransaction[] = [
     organizationId: "makeovers-by-prachi",
     artistId: "artist_prachi",
     grossAmount: 25000,
+    discountAmount: 0,
+    taxAmount: 0,
+    commissionBase: 25000,
     platformCommission: 2500,
     gatewayFee: 500,
     artistShare: 22000,
     currency: "INR",
-    ruleVersion: "1.0",
+    ruleId: "rule_v1_default",
+    ruleVersion: 1,
+    transactionType: "EARNED",
+    idempotencyKey: "idemp_tx_01",
     createdAt: "2026-09-01T10:00:00.000Z",
   },
   {
@@ -39,11 +48,17 @@ const commissionLedger: CommissionTransaction[] = [
     organizationId: "makeovers-by-prachi",
     artistId: "artist_prachi",
     grossAmount: 45000,
+    discountAmount: 0,
+    taxAmount: 0,
+    commissionBase: 45000,
     platformCommission: 4500,
     gatewayFee: 900,
     artistShare: 39600,
     currency: "INR",
-    ruleVersion: "1.0",
+    ruleId: "rule_v1_default",
+    ruleVersion: 1,
+    transactionType: "EARNED",
+    idempotencyKey: "idemp_tx_02",
     createdAt: "2026-09-05T14:30:00.000Z",
   },
   {
@@ -52,11 +67,17 @@ const commissionLedger: CommissionTransaction[] = [
     organizationId: "jaipur-royal-glam",
     artistId: "artist_ananya",
     grossAmount: 50000,
+    discountAmount: 0,
+    taxAmount: 0,
+    commissionBase: 50000,
     platformCommission: 5000,
     gatewayFee: 1000,
     artistShare: 44000,
     currency: "INR",
-    ruleVersion: "1.0",
+    ruleId: "rule_v1_default",
+    ruleVersion: 1,
+    transactionType: "EARNED",
+    idempotencyKey: "idemp_tx_03",
     createdAt: "2026-09-08T11:15:00.000Z",
   },
 ];
@@ -83,10 +104,13 @@ export function getActiveCommissionRule(): CommissionRule {
   if (!activeRule) {
     return {
       ruleId: "rule_fallback",
-      version: "1.0",
+      category: "STANDARD",
+      version: 1,
       platformPercent: 10,
       gatewayPercent: 2,
       artistPercent: 88,
+      commissionBaseType: "GROSS_AFTER_DISCOUNT",
+      recognitionEvent: "PAYMENT_VERIFIED",
       active: true,
       effectiveFrom: new Date().toISOString(),
     };
@@ -102,7 +126,7 @@ export function calculateCommissionBreakdown(grossAmount: number, rule?: Commiss
   platformCommission: number;
   gatewayFee: number;
   artistShare: number;
-  ruleVersion: string;
+  ruleVersion: number;
 } {
   const activeRule = rule || getActiveCommissionRule();
   const platformCommission = Math.round((grossAmount * activeRule.platformPercent) / 100);
@@ -136,11 +160,17 @@ export function recordCommissionTransaction(payload: {
     organizationId: payload.organizationId,
     artistId: payload.artistId,
     grossAmount: breakdown.grossAmount,
+    discountAmount: 0,
+    taxAmount: 0,
+    commissionBase: breakdown.grossAmount,
     platformCommission: breakdown.platformCommission,
     gatewayFee: breakdown.gatewayFee,
     artistShare: breakdown.artistShare,
     currency: "INR",
+    ruleId: "rule_v1_default",
     ruleVersion: breakdown.ruleVersion,
+    transactionType: "EARNED",
+    idempotencyKey: `idemp_${payload.bookingId}_EARNED`,
     createdAt: new Date().toISOString(),
   };
 
@@ -163,11 +193,17 @@ export function recordCommissionReversal(parentTransactionId: string, reason: st
     organizationId: parentTx.organizationId,
     artistId: parentTx.artistId,
     grossAmount: -parentTx.grossAmount,
+    discountAmount: 0,
+    taxAmount: 0,
+    commissionBase: -parentTx.commissionBase,
     platformCommission: -parentTx.platformCommission,
     gatewayFee: -parentTx.gatewayFee,
     artistShare: -parentTx.artistShare,
     currency: parentTx.currency,
+    ruleId: parentTx.ruleId,
     ruleVersion: parentTx.ruleVersion,
+    transactionType: "REVERSAL",
+    idempotencyKey: `reversal_${parentTransactionId}_${Date.now()}`,
     createdAt: new Date().toISOString(),
     isReversal: true,
     parentTransactionId,

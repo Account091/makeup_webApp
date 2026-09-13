@@ -75,15 +75,40 @@ export interface MarketplaceListing {
   createdAt: string;
 }
 
+export type CommissionBaseType =
+  | "GROSS_AFTER_DISCOUNT"
+  | "PRE_TAX_NET"
+  | "SERVICE_ONLY"
+  | "FULL_GROSS";
+
+export type CommissionRecognitionEvent =
+  | "PAYMENT_VERIFIED"
+  | "BOOKING_CONFIRMED"
+  | "EVENT_COMPLETED";
+
 export interface CommissionRule {
   ruleId: string;
-  version: string;
+  category: "STANDARD" | "PREMIUM" | "PROMOTIONAL" | "SERVICE_SPECIFIC" | "ORGANIZATION_SPECIFIC";
+  version: number;
   platformPercent: number; // e.g. 10
   gatewayPercent: number; // e.g. 2
   artistPercent: number; // e.g. 88
+  commissionBaseType: CommissionBaseType;
+  recognitionEvent: CommissionRecognitionEvent;
+  organizationId?: string;
+  serviceId?: string;
   active: boolean;
   effectiveFrom: string;
+  effectiveUntil?: string;
 }
+
+export type CommissionTransactionType =
+  | "EARNED"
+  | "REVERSAL"
+  | "REFUND"
+  | "ADJUSTMENT"
+  | "BONUS"
+  | "PENALTY";
 
 export interface CommissionTransaction {
   id: string;
@@ -91,14 +116,79 @@ export interface CommissionTransaction {
   organizationId: string;
   artistId: string;
   grossAmount: number;
+  discountAmount: number;
+  taxAmount: number;
+  commissionBase: number;
   platformCommission: number;
   gatewayFee: number;
   artistShare: number;
   currency: string;
-  ruleVersion: string;
+  ruleId: string;
+  ruleVersion: number;
+  transactionType: CommissionTransactionType;
+  idempotencyKey: string;
   createdAt: string;
+  requestId?: string;
   isReversal?: boolean;
   parentTransactionId?: string;
+  overrideReason?: string;
+  authorizedByUid?: string;
+}
+
+export interface ArtistEarningsTransaction {
+  id: string;
+  bookingId: string;
+  commissionTransactionId: string;
+  organizationId: string;
+  artistId: string;
+  grossAmount: number;
+  netArtistShare: number;
+  type: CommissionTransactionType;
+  createdAt: string;
+}
+
+export interface ArtistEarningsAdjustment {
+  adjustmentId: string;
+  artistId: string;
+  organizationId: string;
+  type: "BONUS" | "INCENTIVE" | "PENALTY" | "MANUAL_ADJUSTMENT";
+  amount: number;
+  reason: string;
+  authorizedByUid: string;
+  createdAt: string;
+}
+
+export type SettlementCandidateStatus =
+  | "READY_FOR_SETTLEMENT"
+  | "HELD_FOR_DISPUTE"
+  | "BELOW_MINIMUM_THRESHOLD"
+  | "SETTLED";
+
+export interface SettlementCandidate {
+  candidateId: string;
+  artistId: string;
+  organizationId: string;
+  availableAmount: number;
+  heldAmount: number;
+  eligibleAmount: number;
+  currency: string;
+  status: SettlementCandidateStatus;
+  hasVerifiedPayment: boolean;
+  hasCompletedEvent: boolean;
+  hasNoOpenDisputes: boolean;
+  meetsMinimumThreshold: boolean;
+  updatedAt: string;
+}
+
+export interface CommissionReconciliationReport {
+  bookingId: string;
+  bookingTotal: number;
+  paymentLedgerTotal: number;
+  commissionBase: number;
+  platformCommission: number;
+  artistShare: number;
+  reconciled: boolean;
+  discrepancyAmount: number;
 }
 
 export type SettlementStatus =
