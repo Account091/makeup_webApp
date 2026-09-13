@@ -63,21 +63,40 @@ export default function OrganizationAdminDashboard() {
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/organization/settings"
+            className="bg-slate-900 border border-slate-700 text-slate-200 hover:border-amber-500 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
+          >
+            ⚙️ Settings
+          </Link>
+          <Link
+            href="/organization/members"
+            className="bg-slate-900 border border-slate-700 text-slate-200 hover:border-indigo-500 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
+          >
+            👥 Team Members
+          </Link>
+          <Link
+            href="/organization/onboarding"
+            className="bg-slate-900 border border-slate-700 text-slate-200 hover:border-emerald-500 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all"
+          >
+            🚀 Readiness (100%)
+          </Link>
+
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400">Caller Identity:</label>
+            <label className="text-xs text-slate-400">Caller:</label>
             <select
               value={authUid}
               onChange={(e) => setAuthUid(e.target.value)}
               className="bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-3 py-1.5 text-xs"
             >
-              <option value="user_prachi">UID: user_prachi (Makeovers by Prachi)</option>
-              <option value="user_artist_jaipur">UID: user_artist_jaipur (Jaipur Royal Glam)</option>
-              <option value="user_guest_unauth">UID: user_guest_unauth (Unauthorized)</option>
+              <option value="user_prachi">user_prachi (Owner)</option>
+              <option value="user_artist_jaipur">user_artist_jaipur (Owner)</option>
+              <option value="user_guest_unauth">user_guest_unauth (Unauthorized)</option>
             </select>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400">Target Tenant:</label>
+            <label className="text-xs text-slate-400">Tenant:</label>
             <select
               value={selectedOrgId}
               onChange={(e) => setSelectedOrgId(e.target.value)}

@@ -190,6 +190,91 @@ export interface MarketplaceAuditEvent {
   timestamp: string;
 }
 
+export type OrganizationPermission =
+  | "bookings.read"
+  | "bookings.create"
+  | "bookings.update"
+  | "payments.read"
+  | "payments.verify"
+  | "finance.read"
+  | "finance.export"
+  | "staff.manage"
+  | "catalog.manage"
+  | "content.manage"
+  | "analytics.read"
+  | "support.manage"
+  | "settings.manage";
+
+export type PlatformRole =
+  | "PLATFORM_OWNER"
+  | "PLATFORM_ADMIN"
+  | "PLATFORM_SUPPORT"
+  | "PLATFORM_FINANCE"
+  | "PLATFORM_RISK";
+
+export interface OrganizationSettings {
+  organizationId: string;
+  businessName: string;
+  logoUrl: string;
+  description: string;
+  contactEmail: string;
+  contactPhone: string;
+  whatsappNumber: string;
+  serviceLocations: string[];
+  currency: string; // e.g. "INR"
+  timezone: string; // e.g. "Asia/Kolkata"
+  depositPercentDefault: number; // e.g. 30
+  cancellationPolicyText: string;
+  updatedAt: string;
+}
+
+export interface OrganizationPaymentSettings {
+  organizationId: string;
+  upiVpa: string; // e.g. "makeoversbyprachi@upi"
+  accountHolderName: string;
+  bankName: string;
+  accountNumberMasked: string;
+  ifscCode: string;
+  gstin?: string;
+  manualUpiEnabled: boolean;
+  gatewayEnabled: boolean;
+  updatedAt: string;
+}
+
+export type InvitationStatus = "PENDING" | "ACCEPTED" | "EXPIRED" | "CANCELLED";
+
+export interface OrganizationInvitation {
+  invitationId: string;
+  organizationId: string;
+  inviteeEmail: string;
+  assignedRole: OrganizationRole;
+  status: InvitationStatus;
+  invitedByUid: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface OrganizationOnboardingChecklist {
+  organizationId: string;
+  profileComplete: boolean;
+  servicesComplete: boolean;
+  artistsComplete: boolean;
+  calendarConfigured: boolean;
+  paymentConfigured: boolean;
+  verificationComplete: boolean;
+  marketplaceReady: boolean;
+  updatedAt: string;
+}
+
+export interface MarketplaceReadinessScore {
+  organizationId: string;
+  readinessScorePercent: number; // 0 - 100
+  status: "READY" | "NEEDS_ATTENTION" | "INCOMPLETE";
+  completedStepsCount: number;
+  totalStepsCount: number;
+  pendingItems: string[];
+}
+
 export interface MarketplaceSearchQuery {
   city?: string;
   serviceCategory?: string;
