@@ -115,7 +115,7 @@ export default function ServicesPage() {
   return (
     <main style={{ minHeight: "100vh", backgroundColor: "var(--champagne)", padding: "clamp(40px, 6vw, 80px) clamp(16px, 4vw, 40px)" }}>
       <div style={{ maxWidth: "1240px", margin: "0 auto" }}>
-        
+
         {/* Header Title */}
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
           <span style={{ fontSize: "12px", color: "var(--rose-gold)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
