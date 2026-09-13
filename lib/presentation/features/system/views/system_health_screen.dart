@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../domain/entities/system_health_entity.dart';
 
+/// V9.0 — System Health & Observability Screen (Flutter Mobile Admin)
 class SystemHealthScreen extends StatefulWidget {
   const SystemHealthScreen({super.key});
 
@@ -10,373 +8,183 @@ class SystemHealthScreen extends StatefulWidget {
   State<SystemHealthScreen> createState() => _SystemHealthScreenState();
 }
 
-class _SystemHealthScreenState extends State<SystemHealthScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final bool _isLoading = false;
+class _SystemHealthScreenState extends State<SystemHealthScreen> {
+  final List<Map<String, dynamic>> _dependencies = [
+    {'name': 'Firestore', 'status': 'HEALTHY', 'latency': 14, 'verification': 'SANDBOX_VERIFIED'},
+    {'name': 'Storage', 'status': 'HEALTHY', 'latency': 22, 'verification': 'SANDBOX_VERIFIED'},
+    {'name': 'FCM', 'status': 'HEALTHY', 'latency': 38, 'verification': 'INTEGRATION_TESTED'},
+    {'name': 'Google Sheets', 'status': 'DEGRADED', 'latency': 420, 'verification': 'INTEGRATION_TESTED'},
+    {'name': 'WhatsApp', 'status': 'NOT_CONFIGURED', 'latency': 0, 'verification': 'CODE_CONFIGURED'},
+    {'name': 'HuggingFace', 'status': 'HEALTHY', 'latency': 180, 'verification': 'SANDBOX_VERIFIED'},
+  ];
 
-  late SystemHealthStatus _healthStatus;
-  late List<SystemTraceLog> _traceLogs;
-  late List<RiskAssessment> _riskAssessments;
-  late List<PrivacyRequest> _privacyRequests;
+  final Map<String, dynamic> _metrics = {
+    'totalRequests': 14820,
+    'errorRate': '0.25%',
+    'avgLatency': '92ms',
+    'retries': 12,
+    'failedEvents': 2,
+    'openIncidents': 1,
+  };
 
-  final _searchTraceController = TextEditingController(text: 'req_88401');
+  final Map<String, bool> _killSwitches = {
+    'booking': true,
+    'paymentProof': true,
+    'ai': true,
+    'whatsapp': true,
+    'marketplace': true,
+    'chat': true,
+  };
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _loadHealthData();
-  }
+  final bool _maintenanceMode = false;
 
-  void _loadHealthData() {
-    _healthStatus = SystemHealthStatus(
-      overallStatus: 'HEALTHY',
-      healthScorePercent: 99.8,
-      componentStatuses: const {
-        'Firestore BaaS': 'HEALTHY',
-        'Cloud Functions Engine': 'HEALTHY',
-        'Payment Gateways': 'HEALTHY',
-        'Meta WhatsApp Cloud API': 'HEALTHY',
-        'Next.js Customer Web': 'HEALTHY',
-        'FCM Push Notifications': 'HEALTHY',
-        'Cloud Storage': 'HEALTHY',
-        'AI Assistant Gateway': 'HEALTHY',
-        'Multi-Tenant Marketplace': 'HEALTHY',
-      },
-      activeAlertsCount: 0,
-      timestamp: DateTime.now(),
-    );
-
-    _traceLogs = [
-      SystemTraceLog(
-        requestId: 'req_88401',
-        actorId: 'user_cust_77',
-        action: 'approveBooking -> calculateDestinationQuote',
-        statusCode: 200,
-        latencyMs: 142,
-        serviceLogs: const [
-          '[Next.js] Triggered destination quote calculation',
-          '[Cloud Functions] Validated outstation travel buffer',
-          '[Firestore] Authoritative document saved (dest_wed_101)',
-          '[FCM] Push notification sent to admin_inquiries',
-        ],
-        timestamp: DateTime.now().subtract(const Duration(minutes: 12)),
-      ),
-    ];
-
-    _riskAssessments = [
-      RiskAssessment(
-        assessmentId: 'risk_901',
-        orgId: 'org_raj_studio',
-        transactionId: 'txn_99401',
-        riskScore: 8.5,
-        riskFactors: const ['AUTHENTICATED_TENANT_OWNER'],
-        verdict: 'LOW_RISK',
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      ),
-    ];
-
-    _privacyRequests = [
-      PrivacyRequest(
-        requestId: 'prv_101',
-        customerId: 'cust_882',
-        customerEmail: 'meera.s@gmail.com',
-        requestType: 'DATA_EXPORT',
-        status: 'COMPLETED',
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-    ];
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _searchTraceController.dispose();
-    super.dispose();
-  }
-
-  Color _getStatusColor(String status) {
+  IconData _statusIcon(String status) {
     switch (status) {
-      case 'HEALTHY':
-      case 'LOW_RISK':
-      case 'COMPLETED':
-        return AppColors.emeraldGreen;
-      case 'DEGRADED':
-      case 'FLAGGED':
-      case 'PROCESSING':
-      case 'PENDING':
-        return AppColors.statusAwaitingApproval;
-      case 'CRITICAL':
-      case 'BLOCKED':
-        return AppColors.statusDeclined;
-      default:
-        return AppColors.mutedGray;
+      case 'HEALTHY': return Icons.check_circle;
+      case 'DEGRADED': return Icons.warning_amber_rounded;
+      case 'UNAVAILABLE': return Icons.error;
+      default: return Icons.radio_button_unchecked;
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'HEALTHY': return Colors.green;
+      case 'DEGRADED': return Colors.amber;
+      case 'UNAVAILABLE': return Colors.red;
+      default: return Colors.grey;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.champagne,
+      backgroundColor: const Color(0xFF0a0a0f),
       appBar: AppBar(
-        backgroundColor: AppColors.deepPlum,
-        title: Column(
+        title: const Text('System Health'),
+        backgroundColor: const Color(0xFF111827),
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Production Reliability & System Health',
-              style: AppTextStyles.headingTitle.copyWith(
-                color: AppColors.roseGold,
-                fontSize: 18,
-              ),
-            ),
-            Text(
-              'V9.0 Observability, Request Tracing & Fraud Engine',
-              style: AppTextStyles.bodySecondary.copyWith(
-                color: Colors.white70,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.roseGold,
-          labelColor: AppColors.roseGold,
-          unselectedLabelColor: Colors.white60,
-          tabs: const [
-            Tab(text: 'Subsystems'),
-            Tab(text: 'Request Tracing'),
-            Tab(text: 'Fraud & Risk'),
-            Tab(text: 'Privacy Center'),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.roseGold),
-            )
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildSubsystemsTab(),
-                _buildTracingTab(),
-                _buildRiskTab(),
-                _buildPrivacyTab(),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildSubsystemsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Overall Banner
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.emeraldGreen.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.emeraldGreen),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.health_and_safety, color: AppColors.emeraldGreen, size: 36),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Overall System Status: ${_healthStatus.overallStatus}',
-                      style: AppTextStyles.headingTitle.copyWith(color: AppColors.emeraldGreen, fontSize: 18),
-                    ),
-                    Text(
-                      'Platform Uptime & Health Index: ${_healthStatus.healthScorePercent}%',
-                      style: AppTextStyles.bodySecondary,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          Text('Subsystem Microservice Monitors (9 Components)', style: AppTextStyles.sectionHeader),
-          const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 2.2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            children: _healthStatus.componentStatuses.entries.map((entry) {
-              final statusColor = _getStatusColor(entry.value);
-              return Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          entry.key,
-                          style: AppTextStyles.bodySecondary.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          entry.value,
-                          style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTracingTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Distributed Request Trace Inspector', style: AppTextStyles.sectionHeader),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _searchTraceController,
-            decoration: const InputDecoration(
-              labelText: 'Search Request Trace ID (e.g. req_88401)',
-              suffixIcon: Icon(Icons.search, color: AppColors.roseGold),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ..._traceLogs.map(
-            (trace) => Card(
-              elevation: 3,
-              shape: RoundedRectangleBorder(
+            // Overall status
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111827),
                 borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: AppColors.roseGold),
+                border: Border.all(color: const Color(0xFF1e293b)),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.shield, color: Colors.amber, size: 28),
+                  const SizedBox(width: 12),
+                  const Text('Overall: ', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                  const Text('DEGRADED', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Dependencies
+            const Text('Dependencies', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            ..._dependencies.map((d) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111827),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF1e293b)),
+              ),
+              child: Row(
+                children: [
+                  Icon(_statusIcon(d['status']), color: _statusColor(d['status']), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(d['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500))),
+                  Text('${d['latency']}ms', style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                ],
+              ),
+            )),
+            const SizedBox(height: 16),
+
+            // Metrics grid
+            const Text('Metrics', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 2.2,
+              children: _metrics.entries.map((e) => Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111827),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF1e293b)),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Trace ID: ${trace.requestId}', style: AppTextStyles.sectionHeader.copyWith(color: AppColors.deepPlum)),
-                        Chip(
-                          label: Text('${trace.statusCode} OK'),
-                          backgroundColor: AppColors.emeraldGreen.withValues(alpha: 0.15),
-                          labelStyle: const TextStyle(color: AppColors.emeraldGreen, fontSize: 10),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text('Action: ${trace.action}', style: AppTextStyles.bodySecondary),
-                    Text('Actor ID: ${trace.actorId} • Latency: ${trace.latencyMs} ms', style: AppTextStyles.bodySecondary),
-                    const Divider(),
-                    Text('End-to-End Service Spans:', style: AppTextStyles.sectionHeader.copyWith(fontSize: 12)),
-                    const SizedBox(height: 6),
-                    ...trace.serviceLogs.map(
-                      (log) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.subdirectory_arrow_right, size: 14, color: AppColors.roseGold),
-                            const SizedBox(width: 6),
-                            Expanded(child: Text(log, style: AppTextStyles.bodySecondary.copyWith(fontSize: 11))),
-                          ],
-                        ),
-                      ),
-                    ),
+                    Text(e.key, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                    const SizedBox(height: 4),
+                    Text('${e.value}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                   ],
                 ),
+              )).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Kill Switches
+            const Text('Feature Kill Switches', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            ..._killSwitches.entries.map((e) => Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111827),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF1e293b)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(e.key, style: const TextStyle(color: Colors.white)),
+                  Text(e.value ? 'ON' : 'OFF', style: TextStyle(color: e.value ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            )),
+            const SizedBox(height: 16),
+
+            // Maintenance
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF111827),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF1e293b)),
+              ),
+              child: Row(
+                children: [
+                  const Text('Maintenance Mode: ', style: TextStyle(color: Colors.white70)),
+                  Text(
+                    _maintenanceMode ? 'ACTIVE' : 'INACTIVE',
+                    style: TextStyle(color: _maintenanceMode ? Colors.red : Colors.green, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildRiskTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _riskAssessments.length,
-      itemBuilder: (context, index) {
-        final risk = _riskAssessments[index];
-        final color = _getStatusColor(risk.verdict);
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Assessment #${risk.assessmentId}', style: AppTextStyles.sectionHeader),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(risk.verdict, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text('Tenant Org: ${risk.orgId} • Txn ID: ${risk.transactionId}', style: AppTextStyles.bodySecondary),
-                Text('Automated Risk Score: ${risk.riskScore} / 100', style: AppTextStyles.bodySecondary),
-                const Divider(),
-                Text('Risk Factor Audit: ${risk.riskFactors.join(", ")}', style: AppTextStyles.bodySecondary.copyWith(color: AppColors.deepPlum)),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPrivacyTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _privacyRequests.length,
-      itemBuilder: (context, index) {
-        final req = _privacyRequests[index];
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: const Icon(Icons.privacy_tip, color: AppColors.deepPlum),
-            title: Text('${req.requestType} (${req.customerEmail})'),
-            subtitle: Text('Request ID: ${req.requestId}'),
-            trailing: Text(req.status, style: const TextStyle(color: AppColors.emeraldGreen, fontWeight: FontWeight.bold)),
-          ),
-        );
-      },
     );
   }
 }
