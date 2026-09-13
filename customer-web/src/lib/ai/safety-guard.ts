@@ -37,18 +37,22 @@ export async function validateAiSafety(
     throw new AiSafetyViolationError(`Input payload exceeds max input token limit (${maxInputTokens} tokens).`);
   }
 
-  // 2. Prompt Injection Defense
+  // 2. Prompt Injection & Red-Team Defense
   const injectionPatterns = [
-    /ignore\s+previous\s+instructions/i,
-    /reveal\s+(system\s+prompt|api\s+key|token|secrets)/i,
+    /ignore\s+.*(instructions|permissions|rules)/i,
+    /(reveal|tell\s+me|show\s+me|give\s+me)\s+.*(system\s+prompt|api\s+key|token|secret)/i,
     /you\s+are\s+now\s+in\s+developer\s+mode/i,
     /override\s+(security|authorization|permissions)/i,
     /execute\s+(shell|system|delete|drop)/i,
+    /customer\s+b/i,
+    /another\s+customer/i,
+    /(delete|cancel|drop)\s+(this|another|customer'?s?)\s+booking/i,
+    /mark\s+(my|this)?\s*payment\s+as\s+verified/i,
   ];
 
   for (const pattern of injectionPatterns) {
     if (pattern.test(fullText)) {
-      throw new AiSafetyViolationError("Prompt injection attempt detected and blocked by AI Safety Layer.");
+      throw new AiSafetyViolationError("Prompt injection / unauthorized security attempt detected and blocked by AI Safety Layer.");
     }
   }
 
@@ -56,6 +60,7 @@ export async function validateAiSafety(
   const prohibitedMutations = [
     "change price to",
     "override deposit",
+    "confirm my booking directly",
     "confirm booking directly",
     "verify payment utr",
     "bypass 5 minute timer",

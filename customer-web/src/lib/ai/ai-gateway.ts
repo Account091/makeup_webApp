@@ -7,6 +7,7 @@ import { validateAiSafety } from "./safety-guard";
 import { validateAndGuardResponse } from "./response-guard";
 import { buildRoleScopedContext } from "./context-builder";
 import { executeAuthorizedTool } from "./aiTools";
+import { checkAiFeatureFlags, classifySafetyRisk } from "./ai-policy-engine";
 import {
   AiAuditEvent,
   AiAuthContext,
@@ -52,23 +53,28 @@ export async function handleAIRequest(
   const startTimeMs = Date.now();
   const requestId = payload.auth.requestId || `req_ai_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-  // 1. Rate Limiting Check
+  // 1. Feature Flag Check (Emergency Shutdown Control)
+  await checkAiFeatureFlags(payload.feature);
+
+  // 2. Rate Limiting Check
   checkRateLimit(payload.auth);
 
-  // 2. Safety Layer (Input validation, prompt injection defense, boundary checks)
+  // 3. Safety Layer (Input validation, prompt injection defense, boundary checks)
   const { sanitizedMessages, promptHash } = await validateAiSafety(
     payload.feature,
     payload.auth,
     payload.messages
   );
 
-  // 3. Build Minimal Role-Scoped Context
-  const { systemPrompt } = await buildRoleScopedContext(payload.feature, payload.auth);
+  // 4. Safety Risk Classification (LOW, MEDIUM, HIGH)
+  const fullInputText = payload.messages.map((m) => m.content).join(" ");
+  const riskLevel = classifySafetyRisk(fullInputText);
 
-  // Combine system prompt with sanitized user messages
+  // 5. Build Minimal Role-Scoped Context
+  const { systemPrompt } = await buildRoleScopedContext(payload.feature, payload.auth);
   const fullMessages = [{ role: "system" as const, content: systemPrompt }, ...sanitizedMessages];
 
-  // 4. Tool Execution (if specified)
+  // 6. Tool Execution (if specified)
   let toolExecuted: string | undefined = undefined;
   if (payload.toolName) {
     const toolResult = await executeAuthorizedTool(payload.toolName, payload.auth, payload.toolArgs);
@@ -79,7 +85,7 @@ export async function handleAIRequest(
     });
   }
 
-  // 5. Model Routing
+  // 7. Model Routing
   const route = routeModel(payload.feature);
   const primaryProviderName = route.provider;
   const primaryModel = route.model;
@@ -91,7 +97,7 @@ export async function handleAIRequest(
   let inputTokens = 0;
   let outputTokens = 0;
 
-  // 6. Provider Execution with Fallback Strategy
+  // 8. Provider Execution with Fallback Strategy
   try {
     const providerInstance = getProviderInstance(primaryProviderName);
     const result = await providerInstance.execute({
@@ -151,12 +157,12 @@ export async function handleAIRequest(
     }
   }
 
-  // 7. Response Guard (Validation & Business Rule Enforcement)
+  // 9. Response Guard (Validation & Business Rule Enforcement)
   const guarded = validateAndGuardResponse(rawContent, requireStructuredJSON);
   const completedAt = new Date().toISOString();
   const latencyMs = Date.now() - startTimeMs;
 
-  // 8. Audit Logging to Firestore (aiToolCalls/{id})
+  // 10. Audit Logging to Firestore (aiToolCalls/{id})
   await auditLogAiCall({
     requestId,
     uid: payload.auth.uid,
@@ -190,7 +196,7 @@ export async function handleAIRequest(
     inputTokens,
     outputTokens,
     fallbackUsed,
-    requiresHumanApproval: guarded.requiresHumanApproval,
+    requiresHumanApproval: guarded.requiresHumanApproval || riskLevel === "HIGH",
     toolExecuted,
   };
 }
