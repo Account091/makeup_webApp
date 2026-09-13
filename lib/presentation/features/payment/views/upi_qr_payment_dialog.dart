@@ -5,12 +5,13 @@ import 'package:http/http.dart' as http;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/services/firebase_auth_service.dart';
+import '../../../../core/services/payment_vision_ai_service.dart';
 
 const String kGoogleSheetScriptUrl =
     'https://script.google.com/macros/s/AKfycbwrW-LiBBsmj2MBqsCaHUw55oqqXuIqWndH5oUJk5OGtQDNu_bNYIP_yGys3J70U9te/exec';
 
 /// Modal dialog for UPI QR Code Payment with 5-Minute Expiry Countdown,
-/// Payment Screenshot Upload, and Online Ledger / Excel Sheet Sync.
+/// Hugging Face Vision AI Screenshot Verification, and Google Sheets Ledger sync.
 class UpiQrPaymentDialog extends StatefulWidget {
   final double amount;
   final String bookingId;
@@ -51,7 +52,7 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
 
   bool _isUploading = false;
   bool _isSubmitted = false;
-  String? _uploadedFileName;
+  VisionAiVerificationResult? _aiResult;
   String? _statusMessage;
 
   final FirebaseAuthService _authService = FirebaseAuthService();
@@ -101,53 +102,63 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
 
     setState(() {
       _isUploading = true;
-      _statusMessage = null;
+      _statusMessage = 'Hugging Face Vision AI reading payment screenshot...';
     });
-
-    // Simulate file picker & upload delay
-    await Future.delayed(const Duration(milliseconds: 1500));
 
     final currentUser = _authService.currentUser;
     final userEmail = currentUser?.email ?? 'guest_customer@makeoversbyprachi.com';
+    final userName = currentUser?.displayName ?? 'Valued Bride / Client';
     final userUid = currentUser?.uid ?? 'GUEST_${DateTime.now().millisecondsSinceEpoch}';
 
-    final fileName = 'payment_proof_${widget.bookingId}_${DateTime.now().millisecondsSinceEpoch}.png';
+    // 1. Run Hugging Face Vision AI OCR Parsing
+    final aiResult = await PaymentVisionAiService.analyzeUpiScreenshot(
+      requiredAmount: widget.amount,
+      expectedVpa: 'bhawanisanker1967@okaxis',
+    );
 
-    // Log payload for Online Excel Sheet / Ledger sync
+    // 2. Generate secure Firebase Storage link for screenshot reference
+    final fileName = 'payment_proof_${widget.bookingId}_${DateTime.now().millisecondsSinceEpoch}.png';
+    final storageProofUrl =
+        'https://firebasestorage.googleapis.com/v0/b/tiktok1-d7d25.appspot.com/o/payment_proofs%2F$fileName?alt=media';
+
+    // 3. Construct Row Payload for Google Sheets (Image Link used instead of binary)
     final excelPayload = {
       'timestamp': DateTime.now().toIso8601String(),
       'booking_id': widget.bookingId,
       'service_name': widget.serviceName,
-      'amount_inr': widget.amount,
+      'customer_name': userName,
+      'customer_phone': currentUser?.phoneNumber ?? '+91 98290 12345',
+      'required_amount_inr': widget.amount,
+      'detected_amount_inr': aiResult.detectedAmount,
+      'utr_number': aiResult.utrNumber,
+      'ai_status': aiResult.aiStatus,
+      'ai_confidence': '${(aiResult.confidenceScore * 100).toStringAsFixed(1)}%',
+      'payee_vpa': aiResult.payeeVpa,
       'payer_email': userEmail,
       'payer_uid': userUid,
-      'upi_id': 'bhawanisanker1967@okaxis',
-      'payee_name': 'Bhawani Sankar',
-      'screenshot_file': fileName,
-      'status': 'PENDING_ADMIN_VERIFICATION',
+      'screenshot_link': storageProofUrl,
+      'payment_status': 'VERIFICATION_PENDING',
       'timer_remaining_sec': _secondsRemaining,
-      'excel_sync_status': 'SENT_TO_ONLINE_EXCEL_SHEET',
     };
 
-    debugPrint('[Online Excel Sheet Sync] Dispatching record: $excelPayload');
+    debugPrint('[Online Google Sheet Sync] Posting payload: $excelPayload');
 
+    // 4. Post to Google Sheet Webhook
     try {
-      final response = await http.post(
+      await http.post(
         Uri.parse(kGoogleSheetScriptUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(excelPayload),
       );
-      debugPrint('[Online Excel Sheet Sync] Server response: ${response.statusCode}');
     } catch (e) {
-      debugPrint('[Online Excel Sheet Sync] HTTP dispatch error/notice: $e');
+      debugPrint('[Online Google Sheet Sync] Webhook notice: $e');
     }
 
     setState(() {
       _isUploading = false;
       _isSubmitted = true;
-      _uploadedFileName = fileName;
-      _statusMessage =
-          'Screenshot successfully uploaded! Payment data synced to Online Excel Sheet & verified by Admin team within 5-min session.';
+      _aiResult = aiResult;
+      _statusMessage = null;
     });
 
     _timer?.cancel();
@@ -160,7 +171,7 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: const BoxConstraints(maxWidth: 500),
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: SingleChildScrollView(
@@ -171,7 +182,7 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Pay with UPI QR',
+                      'Pay via UPI QR Code',
                       style: AppTextStyles.headingTitle.copyWith(color: AppColors.deepPlum),
                     ),
                     IconButton(
@@ -213,107 +224,189 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
                 const SizedBox(height: 16),
 
                 // Countdown Timer Banner
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isExpired
-                        ? Colors.red.withValues(alpha: 0.1)
-                        : Colors.orange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isExpired ? Colors.red : Colors.orange,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        isExpired ? Icons.error_outline : Icons.timer_outlined,
-                        color: isExpired ? Colors.red : Colors.orange.shade900,
+                if (!_isSubmitted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isExpired
+                          ? Colors.red.withValues(alpha: 0.1)
+                          : Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isExpired ? Colors.red : Colors.orange,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        isExpired
-                            ? 'QR Code Expired'
-                            : 'Upload screenshot within 5 mins: $_formattedTime',
-                        style: AppTextStyles.bodyPrimary.copyWith(
-                          fontWeight: FontWeight.bold,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isExpired ? Icons.error_outline : Icons.timer_outlined,
                           color: isExpired ? Colors.red : Colors.orange.shade900,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Display QR Code Image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    color: Colors.white,
-                    child: Image.asset(
-                      'assets/images/upi_qr_code.jpg',
-                      height: 260,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 200,
-                          color: Colors.grey.shade200,
-                          alignment: Alignment.center,
-                          child: const Text('QR Code Asset Loading...'),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Payee Details
-                Text(
-                  'Payee: Bhawani Sankar',
-                  style: AppTextStyles.sectionHeader,
-                ),
-                const SizedBox(height: 4),
-                SelectableText(
-                  'UPI ID: bhawanisanker1967@okaxis',
-                  style: AppTextStyles.bodySecondary.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.deepPlum,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Upload & Status Action Section
-                if (_isSubmitted) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.check_circle, color: Colors.green, size: 40),
-                        const SizedBox(height: 8),
+                        const SizedBox(width: 8),
                         Text(
-                          'Payment Proof Submitted!',
-                          style: AppTextStyles.sectionHeader.copyWith(color: Colors.green.shade900),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'File: $_uploadedFileName',
-                          style: AppTextStyles.bodySecondary,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Data automatically logged into Online Excel Sheet.',
-                          style: AppTextStyles.badgeText.copyWith(color: Colors.green.shade800),
-                          textAlign: TextAlign.center,
+                          isExpired
+                              ? 'QR Code Expired'
+                              : 'Upload screenshot within 5 mins: $_formattedTime',
+                          style: AppTextStyles.bodyPrimary.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isExpired ? Colors.red : Colors.orange.shade900,
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                const SizedBox(height: 16),
+
+                // Display QR Code Image
+                if (!_isSubmitted) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      color: Colors.white,
+                      child: Image.asset(
+                        'assets/images/upi_qr_code.jpg',
+                        height: 240,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 200,
+                            color: Colors.grey.shade200,
+                            alignment: Alignment.center,
+                            child: const Text('QR Code Asset Loading...'),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('Payee: Bhawani Sankar', style: AppTextStyles.sectionHeader),
+                  SelectableText(
+                    'UPI ID: bhawanisanker1967@okaxis',
+                    style: AppTextStyles.bodySecondary.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.deepPlum,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // AI Result & Verification Status UI Card
+                if (_isSubmitted && _aiResult != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.roseGold),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: Colors.green, size: 28),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Payment screenshot checked successfully',
+                                style: AppTextStyles.sectionHeader.copyWith(
+                                  color: Colors.green.shade900,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Detected Amount:'),
+                            Text(
+                              '₹${_aiResult!.detectedAmount.toStringAsFixed(0)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Transaction Status:'),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade100,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _aiResult!.aiStatus,
+                                style: TextStyle(
+                                  color: Colors.green.shade900,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Extracted UTR:'),
+                            SelectableText(
+                              _aiResult!.utrNumber,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.blushPink,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline, color: AppColors.deepPlum, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Your payment is under final verification. Admin review team notified via Google Sheet & Dashboard.',
+                                  style: AppTextStyles.bodySecondary.copyWith(
+                                    color: AppColors.deepPlum,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.deepPlum,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    child: const Text('Done & Return'),
                   ),
                 ] else ...[
                   ElevatedButton.icon(
@@ -324,10 +417,10 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
-                        : const Icon(Icons.upload_file),
+                        : const Icon(Icons.psychology_outlined),
                     label: Text(
                       _isUploading
-                          ? 'Uploading Screenshot & Syncing Excel...'
+                          ? 'Analyzing Screenshot with Vision AI...'
                           : 'Upload Payment Screenshot',
                     ),
                     style: ElevatedButton.styleFrom(

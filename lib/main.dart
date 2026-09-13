@@ -24,6 +24,7 @@ import 'presentation/features/booking/views/booking_status_screen.dart';
 import 'presentation/features/whatsapp_automation/views/whatsapp_dashboard_screen.dart';
 import 'presentation/features/customer_website/views/customer_home_screen.dart';
 import 'presentation/features/auth/views/auth_screen.dart';
+import 'presentation/features/payment/views/admin_payment_verification_screen.dart';
 
 import 'core/services/firebase_messaging_service.dart';
 
@@ -101,6 +102,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     ServiceCatalogScreen(),
     BookingInquiryScreen(),
     AuthScreen(),
+    AdminPaymentVerificationScreen(),
   ];
 
   @override
@@ -149,6 +151,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               _buildDrawerItem(9, 'Services Catalog', Icons.grid_view),
               _buildDrawerItem(10, 'Book Date Wizard', Icons.add_task),
               _buildDrawerItem(11, 'Firebase Auth & FCM', Icons.security),
+              _buildDrawerItem(12, 'Payment Verification Queue', Icons.verified_user),
             ],
           ),
         ),
