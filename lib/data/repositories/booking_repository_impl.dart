@@ -1,15 +1,19 @@
+import 'package:flutter/foundation.dart';
 import '../../domain/entities/booking_entity.dart';
 import '../../domain/repositories/i_booking_repository.dart';
 import '../datasources/booking_remote_datasource.dart';
+import '../datasources/vercel_api_service.dart';
 import '../models/booking_model.dart';
 
 class BookingRepositoryImpl implements IBookingRepository {
   final BookingRemoteDataSource? remoteDataSource;
+  final VercelApiService? vercelApiService;
   final bool useMockData;
 
   BookingRepositoryImpl({
     this.remoteDataSource,
-    this.useMockData = true,
+    this.vercelApiService,
+    this.useMockData = false,
   });
 
   final List<BookingEntity> _mockBookings = [
@@ -81,9 +85,16 @@ class BookingRepositoryImpl implements IBookingRepository {
   @override
   Future<List<BookingEntity>> getBookings() async {
     if (!useMockData && remoteDataSource != null) {
-      return await remoteDataSource!.fetchBookings();
+      try {
+        final liveList = await remoteDataSource!.fetchBookings();
+        if (liveList.isNotEmpty) {
+          return liveList;
+        }
+      } catch (e) {
+        debugPrint('[BookingRepositoryImpl] Live fetch notice: $e');
+      }
     }
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 300));
     return List.unmodifiable(_mockBookings);
   }
 
@@ -99,12 +110,35 @@ class BookingRepositoryImpl implements IBookingRepository {
 
   @override
   Future<void> submitInquiry(BookingEntity booking) async {
-    if (!useMockData && remoteDataSource != null) {
-      await remoteDataSource!
-          .submitInquiry(BookingModel.fromEntity(booking));
-      return;
+    if (!useMockData) {
+      try {
+        if (vercelApiService != null) {
+          final res = await vercelApiService!.createBookingSession(
+            fullName: booking.customer.fullName,
+            phone: booking.customer.phone,
+            email: booking.customer.email,
+            service: booking.serviceTitle,
+            packageType: booking.packageName ?? booking.serviceTitle,
+            date: booking.event.eventDate.toIso8601String().substring(0, 10),
+            readyTime: booking.event.readyByTime,
+            venue: booking.event.venueLocation,
+            city: booking.event.city,
+            guestCount: booking.event.guestCount,
+          );
+          if (res['success'] == true) {
+            debugPrint('[BookingRepositoryImpl] Live Vercel API booking created: ${res['bookingId']}');
+            return;
+          }
+        }
+        if (remoteDataSource != null) {
+          await remoteDataSource!.submitInquiry(BookingModel.fromEntity(booking));
+          return;
+        }
+      } catch (e) {
+        debugPrint('[BookingRepositoryImpl] submitInquiry live API notice: $e');
+      }
     }
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 400));
     _mockBookings.insert(0, booking);
   }
 

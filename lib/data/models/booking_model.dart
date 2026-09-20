@@ -32,7 +32,7 @@ class BookingModel extends BookingEntity {
       ),
       event: EventDetails(
         eventType: eventData['type'] ?? 'Bridal',
-        eventDate: (eventData['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        eventDate: _parseDateTime(eventData['date']),
         readyByTime: eventData['readyByTime'] ?? '16:00',
         venueLocation: eventData['venue'] ?? '',
         city: eventData['city'] ?? 'Jodhpur',
@@ -53,8 +53,43 @@ class BookingModel extends BookingEntity {
       status: _parseStatus(data['status']),
       referenceImages: List<String>.from(data['referenceImages'] ?? []),
       notes: data['notes'],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(data['createdAt']),
     );
+  }
+
+  static DateTime _parseDateTime(dynamic val) {
+    if (val is Timestamp) return val.toDate();
+    if (val is String) {
+      try {
+        return DateTime.parse(val);
+      } catch (_) {}
+    }
+    return DateTime.now();
+  }
+
+  static BookingStatus _parseStatus(String? statusStr) {
+    final s = (statusStr ?? '').trim().toLowerCase();
+    switch (s) {
+      case 'depositpending':
+      case 'deposit_pending':
+      case 'payment_proof_submitted':
+        return BookingStatus.depositPending;
+      case 'confirmed':
+      case 'verified':
+        return BookingStatus.confirmed;
+      case 'completed':
+        return BookingStatus.completed;
+      case 'declined':
+      case 'rejected':
+        return BookingStatus.declined;
+      case 'cancelled':
+      case 'expired':
+        return BookingStatus.cancelled;
+      case 'awaitingapproval':
+      case 'awaiting_approval':
+      default:
+        return BookingStatus.awaitingApproval;
+    }
   }
 
   Map<String, dynamic> toFirestore() {
@@ -67,7 +102,7 @@ class BookingModel extends BookingEntity {
       },
       'event': {
         'type': event.eventType,
-        'date': Timestamp.fromDate(event.eventDate),
+        'date': event.eventDate.toIso8601String().substring(0, 10),
         'readyByTime': event.readyByTime,
         'venue': event.venueLocation,
         'city': event.city,
@@ -90,24 +125,6 @@ class BookingModel extends BookingEntity {
       'notes': notes,
       'createdAt': Timestamp.fromDate(createdAt),
     };
-  }
-
-  static BookingStatus _parseStatus(String? statusStr) {
-    switch (statusStr) {
-      case 'depositPending':
-        return BookingStatus.depositPending;
-      case 'confirmed':
-        return BookingStatus.confirmed;
-      case 'completed':
-        return BookingStatus.completed;
-      case 'declined':
-        return BookingStatus.declined;
-      case 'cancelled':
-        return BookingStatus.cancelled;
-      case 'awaitingApproval':
-      default:
-        return BookingStatus.awaitingApproval;
-    }
   }
 
   factory BookingModel.fromEntity(BookingEntity entity) {

@@ -1,7 +1,12 @@
+import '../datasources/service_remote_datasource.dart';
 import '../../domain/entities/service_entity.dart';
 import '../../domain/repositories/i_service_repository.dart';
 
 class ServiceRepositoryImpl implements IServiceRepository {
+  final ServiceRemoteDataSource? remoteDataSource;
+
+  ServiceRepositoryImpl({this.remoteDataSource});
+
   final List<ServiceEntity> _services = const [
     ServiceEntity(
       id: 'srv_bridal',
@@ -75,6 +80,12 @@ class ServiceRepositoryImpl implements IServiceRepository {
 
   @override
   Future<List<ServiceEntity>> getServices() async {
+    if (remoteDataSource != null) {
+      try {
+        final remote = await remoteDataSource!.fetchServices();
+        if (remote.isNotEmpty) return remote;
+      } catch (_) {}
+    }
     await Future.delayed(const Duration(milliseconds: 300));
     return _services;
   }

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/services/firebase_auth_service.dart';
+import '../../../../core/services/firebase_messaging_service.dart';
 import '../../../../core/services/payment_vision_ai_service.dart';
 
 const String kGoogleSheetScriptUrl =
@@ -153,6 +154,15 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
     } catch (e) {
       debugPrint('[Online Google Sheet Sync] Webhook notice: $e');
     }
+
+    // 5. Dispatch Instant FCM Push Notification Alert to Admin
+    FirebaseMessagingService.instance.sendAdminPaymentNotification(
+      bookingId: widget.bookingId,
+      utrNumber: aiResult.utrNumber,
+      amount: widget.amount,
+      customerName: userName,
+      proofUrl: storageProofUrl,
+    );
 
     setState(() {
       _isUploading = false;

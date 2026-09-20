@@ -130,6 +130,26 @@ export async function POST(req: Request) {
       requestId: `req_${now}`,
     }).catch(err => console.warn("[Server API] Sheets mirror dispatch notice:", err));
 
+    // 7. Dispatch Real-time Alert to Admin Notification Inbox & FCM
+    addDoc(collection(db, "notifications"), {
+      title: `🎉 New Bridal Booking: ${fullName}`,
+      body: `Booking #${bookingId} received for ${date} at ${readyTime} (${service}). Advance deposit: ₹${depositAmount}.`,
+      category: "BOOKING",
+      targetRole: "ADMIN",
+      bookingId,
+      isUnread: true,
+      data: {
+        bookingId,
+        customerName: fullName,
+        phone,
+        service,
+        date,
+        depositAmount,
+      },
+      createdAt: serverTimestamp(),
+      isoTimestamp: isoNow,
+    }).catch(err => console.warn("[Server API] Admin notification dispatch notice:", err));
+
     return NextResponse.json({
       success: true,
       bookingId,

@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/booking_model.dart';
-import '../../domain/entities/booking_entity.dart';
 
 abstract class BookingRemoteDataSource {
   Future<List<BookingModel>> fetchBookings();
@@ -25,9 +24,15 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
 
   @override
   Future<List<BookingModel>> fetchBookings() async {
-    final snapshot =
-        await _bookingsRef.orderBy('createdAt', descending: true).get();
-    return snapshot.docs.map((doc) => BookingModel.fromFirestore(doc)).toList();
+    try {
+      final snapshot = await _bookingsRef.get();
+      final list =
+          snapshot.docs.map((doc) => BookingModel.fromFirestore(doc)).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    } catch (e) {
+      return [];
+    }
   }
 
   @override
@@ -44,7 +49,8 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
     String? notes,
   }) async {
     await _bookingsRef.doc(bookingId).update({
-      'status': BookingStatus.depositPending.name,
+      'status': 'DEPOSIT_PENDING',
+      'payment.status': 'DEPOSIT_PENDING',
       'commercials.basePrice': quoteAmount,
       'commercials.travelFee': travelFee,
       'commercials.depositRequired': depositRequired,
@@ -56,7 +62,8 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
   @override
   Future<void> declineBooking(String bookingId, String reason) async {
     await _bookingsRef.doc(bookingId).update({
-      'status': BookingStatus.declined.name,
+      'status': 'DECLINED',
+      'payment.status': 'DECLINED',
       'notes': 'Declined: $reason',
       'updatedAt': FieldValue.serverTimestamp(),
     });

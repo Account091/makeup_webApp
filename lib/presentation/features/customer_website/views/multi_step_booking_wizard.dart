@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/services/booking_date_service.dart';
 import '../../../../domain/entities/booking_entity.dart';
 import '../../../common/widgets/custom_button.dart';
 import '../../booking/bloc/booking_bloc.dart';
 import '../../booking/bloc/booking_event.dart';
 import '../../payment/views/upi_qr_payment_dialog.dart';
+import '../../../../core/services/firebase_messaging_service.dart';
 
 class ServiceOptionItem {
   final String title;
@@ -44,6 +46,15 @@ class _MultiStepBookingWizardState extends State<MultiStepBookingWizard> {
   // Step 3: Date & Time
   DateTime _eventDate = DateTime.now().add(const Duration(days: 30));
   String _readyByTime = '16:00';
+  DateAvailabilityResult? _dateStatus;
+  bool _isCheckingAvailability = false;
+  bool _acceptedWaitlistForQueue = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSelectedDate(_eventDate, showPopups: false);
+  }
 
   // Step 4: Venue & City
   final _venueController = TextEditingController(text: 'Gorbandh Palace');
@@ -137,7 +148,187 @@ class _MultiStepBookingWizardState extends State<MultiStepBookingWizard> {
 
   double get _calculatedDeposit => (_calculatedTotal * 0.3).roundToDouble();
 
+  Future<void> _checkSelectedDate(DateTime date, {bool showPopups = true}) async {
+    setState(() {
+      _eventDate = date;
+      _isCheckingAvailability = true;
+      _acceptedWaitlistForQueue = false;
+    });
+
+    final result = await BookingDateService.checkDateAvailability(date);
+    if (!mounted) return;
+
+    setState(() {
+      _dateStatus = result;
+      _isCheckingAvailability = false;
+    });
+
+    if (showPopups) {
+      if (result.isLocked) {
+        _showLockedDateDialog(result);
+      } else if (result.isInQueue) {
+        _showInQueueDateDialog(result);
+      }
+    }
+  }
+
+  void _showLockedDateDialog(DateAvailabilityResult result) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.lock, color: Colors.red.shade900, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Date Officially Locked',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'The date ${_eventDate.day}/${_eventDate.month}/${_eventDate.year} is already confirmed and reserved by the studio for an exclusive bridal makeover.',
+              style: const TextStyle(fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.red.shade900, size: 18),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Prachi accepts only a single bride per day to guarantee exclusivity. New bookings cannot be accepted for this date.',
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.deepPlum,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Select Another Date'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showInQueueDateDialog(DateAvailabilityResult result) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.hourglass_top, color: Colors.amber.shade900, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Date in Verification Queue',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'An inquiry is currently in queue for ${_eventDate.day}/${_eventDate.month}/${_eventDate.year} awaiting studio deposit approval.',
+              style: const TextStyle(fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: const Text(
+                'You can still proceed and submit this booking as a Priority Waitlist. If the pending inquiry is released or not approved, your booking will take immediate precedence.',
+                style: TextStyle(fontSize: 12, color: Colors.black87),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Pick Alternate Date'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber.shade800,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              setState(() => _acceptedWaitlistForQueue = true);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Proceed as Waitlist'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onNextPressed() {
+    // If on Step 3 (Date & Time, index 2), validate date lock status
+    if (_currentStep == 2) {
+      if (_isCheckingAvailability) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Verifying studio schedule availability...')),
+        );
+        return;
+      }
+      if (_dateStatus?.isLocked == true) {
+        _showLockedDateDialog(_dateStatus!);
+        return;
+      }
+      if (_dateStatus?.isInQueue == true && !_acceptedWaitlistForQueue) {
+        _showInQueueDateDialog(_dateStatus!);
+        return;
+      }
+    }
+
     if (_currentStep < 6) {
       setState(() => _currentStep++);
     } else {
@@ -193,6 +384,16 @@ class _MultiStepBookingWizardState extends State<MultiStepBookingWizard> {
     );
 
     context.read<BookingBloc>().add(SubmitBookingInquiryEvent(newBooking));
+
+    // 1. Dispatch real-time FCM alert to Admin
+    FirebaseMessagingService.instance.sendAdminBookingNotification(booking: newBooking);
+
+    // 2. Register customer device FCM token for updates & reminders
+    FirebaseMessagingService.instance.registerCustomerToken(
+      phone: phone,
+      bookingId: bookingId,
+      customerName: name,
+    );
 
     // Show UPI QR Payment Dialog directly
     UpiQrPaymentDialog.show(
@@ -438,6 +639,10 @@ class _MultiStepBookingWizardState extends State<MultiStepBookingWizard> {
 
   // Step 3: Date & Time Picker
   Widget _buildStep3DateAndTime() {
+    final isLocked = _dateStatus?.isLocked ?? false;
+    final isInQueue = _dateStatus?.isInQueue ?? false;
+    final isAvailable = _dateStatus?.isAvailable ?? false;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -447,8 +652,142 @@ class _MultiStepBookingWizardState extends State<MultiStepBookingWizard> {
           initialDate: _eventDate,
           firstDate: DateTime.now(),
           lastDate: DateTime.now().add(const Duration(days: 365)),
-          onDateChanged: (date) => setState(() => _eventDate = date),
+          onDateChanged: (date) => _checkSelectedDate(date),
         ),
+        const SizedBox(height: 12),
+
+        // Real-Time Studio Availability Status Badge
+        if (_isCheckingAvailability)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.lightBorder),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.roseGold),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Checking live studio schedule availability...',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+              ],
+            ),
+          )
+        else if (isLocked)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.red.shade400, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.lock, color: Colors.red.shade900, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🔴 DATE LOCKED & CONFIRMED',
+                        style: TextStyle(
+                          color: Colors.red.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'This date is officially booked for another client. Please select an alternate date.',
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (isInQueue)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amber.shade400, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.hourglass_top, color: Colors.amber.shade900, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🟡 DATE IN VERIFICATION QUEUE',
+                        style: TextStyle(
+                          color: Colors.amber.shade900,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _acceptedWaitlistForQueue
+                            ? 'You have opted to proceed on Priority Waitlist for this date.'
+                            : 'An inquiry is pending verification. You can proceed as a Priority Waitlist candidate.',
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else if (isAvailable)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.green.shade300, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green.shade800, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🟢 DATE AVAILABLE FOR BOOKING',
+                        style: TextStyle(
+                          color: Colors.green.shade800,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Exclusive bridal artistry slot is open. Advance to reserve your date.',
+                        style: TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
         const SizedBox(height: 16),
         Text('Required Ready-By Time:', style: AppTextStyles.sectionHeader),
         const SizedBox(height: 8),

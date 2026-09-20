@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'core/constants/app_colors.dart';
 import 'core/constants/app_text_styles.dart';
 import 'core/services/firebase_options.dart';
+import 'data/datasources/booking_remote_datasource.dart';
+import 'data/datasources/service_remote_datasource.dart';
+import 'data/datasources/vercel_api_service.dart';
 import 'data/repositories/booking_repository_impl.dart';
 import 'data/repositories/service_repository_impl.dart';
 import 'presentation/features/booking/bloc/booking_bloc.dart';
@@ -46,8 +50,20 @@ class MakeoversByPrachiApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bookingRepo = BookingRepositoryImpl();
-    final serviceRepo = ServiceRepositoryImpl();
+    final vercelApi = VercelApiService();
+    final remoteDataSource = BookingRemoteDataSourceImpl(
+      firestore: FirebaseFirestore.instance,
+    );
+    final bookingRepo = BookingRepositoryImpl(
+      remoteDataSource: remoteDataSource,
+      vercelApiService: vercelApi,
+      useMockData: false,
+    );
+    final serviceRepo = ServiceRepositoryImpl(
+      remoteDataSource: ServiceRemoteDataSourceImpl(
+        firestore: FirebaseFirestore.instance,
+      ),
+    );
 
     return MultiBlocProvider(
       providers: [

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/services/booking_date_service.dart';
 import '../../../../domain/entities/booking_entity.dart';
 import '../../../common/widgets/custom_button.dart';
 import '../bloc/booking_bloc.dart';
 import '../bloc/booking_event.dart';
+import '../../../../core/services/firebase_messaging_service.dart';
 
 class BookingInquiryScreen extends StatefulWidget {
   const BookingInquiryScreen({super.key});
@@ -25,8 +27,84 @@ class _BookingInquiryScreenState extends State<BookingInquiryScreen> {
   String _selectedEventType = 'Bridal';
   String _selectedService = 'Signature Bridal Makeover';
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 14));
+  DateAvailabilityResult? _dateStatus;
   final String _readyByTime = '15:00';
   final int _guestCount = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInitialDate();
+  }
+
+  Future<void> _checkInitialDate() async {
+    final res = await BookingDateService.checkDateAvailability(_selectedDate);
+    if (mounted) setState(() => _dateStatus = res);
+  }
+
+  void _showLockedDialog(DateAvailabilityResult result) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.lock, color: Colors.red.shade900),
+            const SizedBox(width: 8),
+            const Text('Date Unavailable & Locked'),
+          ],
+        ),
+        content: Text(
+          'The date ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} is already confirmed and reserved by the studio for an exclusive royal wedding.\n\nPrachi accepts only 1 bride per day to guarantee exclusivity. Please choose an alternate date.',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.deepPlum,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Choose Alternate Date'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showInQueueDialog(DateAvailabilityResult result) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.hourglass_top, color: Colors.amber.shade900),
+            const SizedBox(width: 8),
+            const Text('Date in Verification Queue'),
+          ],
+        ),
+        content: Text(
+          'An inquiry is currently in queue for ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} awaiting payment verification.\n\nYou can still submit this inquiry as a Priority Waitlist candidate. If the pending booking expires or cancels, your inquiry takes immediate precedence.',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Select Another Date'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber.shade800,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Proceed as Waitlist'),
+          ),
+        ],
+      ),
+    );
+  }
 
   final List<String> _eventTypes = [
     'Bridal',
@@ -163,9 +241,69 @@ class _BookingInquiryScreenState extends State<BookingInquiryScreen> {
                     firstDate: DateTime.now(),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
-                  if (picked != null) setState(() => _selectedDate = picked);
+                  if (picked != null) {
+                    final res = await BookingDateService.checkDateAvailability(picked);
+                    if (res.isLocked) {
+                      _showLockedDialog(res);
+                    } else {
+                      if (res.isInQueue) {
+                        _showInQueueDialog(res);
+                      }
+                      setState(() {
+                        _selectedDate = picked;
+                        _dateStatus = res;
+                      });
+                    }
+                  }
                 },
               ),
+              if (_dateStatus != null) ...[
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _dateStatus!.isLocked
+                        ? Colors.red.shade50
+                        : (_dateStatus!.isInQueue ? Colors.amber.shade50 : Colors.green.shade50),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: _dateStatus!.isLocked
+                          ? Colors.red.shade300
+                          : (_dateStatus!.isInQueue ? Colors.amber.shade300 : Colors.green.shade300),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _dateStatus!.isLocked
+                            ? Icons.lock
+                            : (_dateStatus!.isInQueue ? Icons.hourglass_top : Icons.check_circle),
+                        size: 14,
+                        color: _dateStatus!.isLocked
+                            ? Colors.red.shade900
+                            : (_dateStatus!.isInQueue ? Colors.amber.shade900 : Colors.green.shade800),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _dateStatus!.isLocked
+                              ? 'Date Locked: This date is officially confirmed for another client.'
+                              : (_dateStatus!.isInQueue
+                                  ? 'Date in Queue: Another client is pending verification (Waitlist Request).'
+                                  : 'Date Available: Open for reservation!'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: _dateStatus!.isLocked
+                                ? Colors.red.shade900
+                                : (_dateStatus!.isInQueue ? Colors.amber.shade900 : Colors.green.shade800),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               TextFormField(
                 controller: _venueController,
@@ -214,7 +352,12 @@ class _BookingInquiryScreenState extends State<BookingInquiryScreen> {
     );
   }
 
-  void _submitForm() {
+  void _submitForm() async {
+    if (_dateStatus?.isLocked == true) {
+      _showLockedDialog(_dateStatus!);
+      return;
+    }
+
     if (_formKey.currentState!.validate()) {
       final newBooking = BookingEntity(
         id: 'BK-${DateTime.now().millisecondsSinceEpoch}',
@@ -243,6 +386,16 @@ class _BookingInquiryScreenState extends State<BookingInquiryScreen> {
       );
 
       context.read<BookingBloc>().add(SubmitBookingInquiryEvent(newBooking));
+
+      // 1. Dispatch FCM push notification alert to Admin
+      FirebaseMessagingService.instance.sendAdminBookingNotification(booking: newBooking);
+
+      // 2. Register customer device token
+      FirebaseMessagingService.instance.registerCustomerToken(
+        phone: _phoneController.text,
+        bookingId: newBooking.id,
+        customerName: _nameController.text,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

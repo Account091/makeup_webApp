@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../lib/firebase";
-import { collection, query, where, getDocs, getDoc, setDoc, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, getDocs, getDoc, setDoc, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
 import { mirrorPaymentProofSubmitted } from "../../../../lib/financial/sheets-payment-mirror-engine";
 
 async function uploadToImageCdn(base64DataUrl: string): Promise<string | null> {
@@ -156,6 +156,26 @@ export async function POST(req: Request) {
       aiResultRef: `ai_res_${bookingId}`,
       requestId: `req_${nowMs}`,
     }).catch(sheetErr => console.warn("[Server API] Sheets mirror dispatch notice (Firestore remains single source of truth):", sheetErr));
+
+    // 6. Dispatch Real-time Alert to Admin Notification Inbox & FCM
+    addDoc(collection(db, "notifications"), {
+      title: `💰 Payment Proof Submitted: ${bookingData.customerDetails?.fullName || "Guest"}`,
+      body: `UTR ${cleanUtr || "N/A"} received for #${bookingId} (₹${bookingData.commercials?.depositRequired || 7500}). Tap to review & lock slot.`,
+      category: "PAYMENT",
+      targetRole: "ADMIN",
+      bookingId,
+      isUnread: true,
+      data: {
+        bookingId,
+        customerName: bookingData.customerDetails?.fullName || "Guest",
+        phone: bookingData.customerDetails?.phone || "",
+        utrNumber: cleanUtr || "N/A",
+        amount: bookingData.commercials?.depositRequired || 7500,
+        proofFileRef,
+      },
+      createdAt: serverTimestamp(),
+      isoTimestamp: proofSubmittedAtIso,
+    }).catch(err => console.warn("[Server API] Admin payment notification dispatch notice:", err));
 
     return NextResponse.json({
       success: true,

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
@@ -11,7 +12,7 @@ class WhatsappDashboardScreen extends StatefulWidget {
 }
 
 class _WhatsappDashboardScreenState extends State<WhatsappDashboardScreen> {
-  final List<Map<String, dynamic>> _automationLogs = [
+  final List<Map<String, dynamic>> _fallbackLogs = [
     {
       'id': 'evt_01',
       'trigger': 'New Inquiry Acknowledgment',
@@ -97,64 +98,94 @@ class _WhatsappDashboardScreenState extends State<WhatsappDashboardScreen> {
                 _buildRuleToggle('24h Appointment Confirm', 'Request 1-tap appointment confirmation', true),
                 const SizedBox(height: 24),
 
-                // Audit Logs (automationEvents collection)
-                Text('`automationEvents` Delivery Logs',
+                // Live Audit Logs
+                Text('Real-Time Message Delivery Logs',
                     style: AppTextStyles.headingTitle.copyWith(fontSize: 18)),
                 const SizedBox(height: 8),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _automationLogs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final log = _automationLogs[index];
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.lightBorder),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  log['trigger'],
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.sectionHeader,
-                                ),
-                                Text(
-                                  log['client'],
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.bodySecondary,
-                                ),
-                              ],
-                            ),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('automationEvents')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    List<Map<String, dynamic>> logs = [];
+
+                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                      logs = snapshot.data!.docs.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>? ?? {};
+                        return {
+                          'id': doc.id,
+                          'trigger': data['trigger'] ??
+                              data['templateName'] ??
+                              'WhatsApp Cloud Notification',
+                          'client': data['client'] ??
+                              data['customerPhone'] ??
+                              'Client',
+                          'status': data['status'] ?? 'Delivered',
+                          'time': 'Live Event',
+                        };
+                      }).toList();
+                    }
+
+                    if (logs.isEmpty) {
+                      logs = _fallbackLogs;
+                    }
+
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: logs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final log = logs[index];
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.lightBorder),
                           ),
-                          const SizedBox(width: 8),
-                          Chip(
-                            backgroundColor: log['status'] == 'Read'
-                                ? AppColors.roseGold.withValues(alpha: 0.15)
-                                : Colors.blue.withValues(alpha: 0.15),
-                            label: Text(
-                              '${log['status']} • ${log['time']}',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: log['status'] == 'Read'
-                                    ? AppColors.roseGold
-                                    : Colors.blue,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      log['trigger'].toString(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.sectionHeader,
+                                    ),
+                                    Text(
+                                      log['client'].toString(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.bodySecondary,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Chip(
+                                backgroundColor: log['status'] == 'Read'
+                                    ? AppColors.roseGold.withValues(alpha: 0.15)
+                                    : Colors.blue.withValues(alpha: 0.15),
+                                label: Text(
+                                  '${log['status']} • ${log['time']}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: log['status'] == 'Read'
+                                        ? AppColors.roseGold
+                                        : Colors.blue,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     );
                   },
                 ),

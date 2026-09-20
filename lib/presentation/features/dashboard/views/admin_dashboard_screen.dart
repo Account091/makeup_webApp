@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/formatters.dart';
@@ -702,7 +703,17 @@ class AdminDashboardScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton.icon(
-                    onPressed: () {},
+                    onPressed: () async {
+                      final clean = booking.customer.phone.replaceAll(RegExp(r'[^0-9+]'), '');
+                      var digits = clean.replaceAll('+', '').trim();
+                      if (digits.length == 10) digits = '91$digits';
+                      final uri = Uri.parse('https://wa.me/$digits?text=Hello%20${Uri.encodeComponent(booking.customer.fullName)}%2C%20this%20is%20Prachi%20from%20Makeovers%20by%20Prachi%20regarding%20your%20event%20booking%20%23${booking.id}.');
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (_) {
+                        try { await launchUrl(uri); } catch (_) {}
+                      }
+                    },
                     icon: const Icon(Icons.chat_bubble_outline,
                         size: 18, color: AppColors.roseGold),
                     label: const Text('WhatsApp Client',
