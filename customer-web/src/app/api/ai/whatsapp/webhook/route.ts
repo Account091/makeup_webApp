@@ -212,7 +212,18 @@ export async function POST(req: Request) {
     }
 
     // ------------------------------------------------------------------
-    // AI Assistant Processing via Universal AI Gateway
+    // WHATSAPP AUTOMATION WORKFLOW & GOOGLE SHEETS MIRRORING
+    // 
+    // 1. Customer Detail Collection & Booking Session Creation:
+    //    The WhatsApp AI Assistant prompts the customer for booking details
+    //    (Full Name, Event Date, Styling Package, Venue/City, Guest Count).
+    //    Once collected, it creates an authoritative booking session in Firestore
+    //    (`bookings` collection) and locks the date.
+    // 
+    // 2. Google Sheets Dual-Ledger Sync:
+    //    All operational records & payment proof events (Session Started, Screenshot Uploaded,
+    //    Deposit Verification) are automatically pushed to the configured Google Sheets ledger
+    //    ('Payments' and 'PaymentEvents' tabs).
     // ------------------------------------------------------------------
     const auth: AiAuthContext = {
       uid: senderPhone,
