@@ -151,7 +151,11 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
               _buildDrawerItem(9, 'Services Catalog', Icons.grid_view),
               _buildDrawerItem(10, 'Book Date Wizard', Icons.add_task),
               _buildDrawerItem(11, 'Firebase Auth & FCM', Icons.security),
-              _buildDrawerItem(12, 'Payment Verification Queue', Icons.verified_user),
+              _buildDrawerItem(
+                12,
+                'Payment Verification Queue',
+                Icons.verified_user,
+              ),
             ],
           ),
         ),
