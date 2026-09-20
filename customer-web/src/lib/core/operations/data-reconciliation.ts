@@ -11,6 +11,8 @@ import {
   ControlledDataRepairCase,
 } from './operations-types';
 
+export type { DataReconciliationResult };
+
 const dataRepairCasesStore: ControlledDataRepairCase[] = [];
 
 export function runDataConsistencyAudit(): DataReconciliationResult {

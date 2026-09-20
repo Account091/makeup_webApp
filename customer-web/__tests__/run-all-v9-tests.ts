@@ -1,9 +1,9 @@
 /**
- * Complete Master Production Suite Runner (V9.0 - V10.7)
+ * Complete Master Production Suite Runner (V9.0 - V10.8)
  */
 
 console.log('====================================================================');
-console.log('🚀 RUNNING MASTER PRODUCTION SUITE: V9.0 THROUGH V10.7 PLATFORM GOVERNANCE');
+console.log('🚀 RUNNING MASTER PRODUCTION SUITE: V9.0 THROUGH V10.8 INVENTORY & PROCUREMENT');
 console.log('====================================================================\n');
 
 import './v90-reliability-security.test';
@@ -22,8 +22,15 @@ import './v104-advanced-operations.test';
 import './v105-omnichannel-communication.test';
 import './v106-unified-bi-decision.test';
 import './v107-platform-governance.test';
+import './v108-inventory-procurement.test';
+import './upi-payment-flow.test';
+import './sheets-payment-mirror.test';
+import './customer-action-boundary.test';
+import './customer-facing-features-audit.test';
+import './local-certification-emulator.test';
 
 console.log('\n====================================================================');
 console.log('🏆 MASTER SUCCESS: ALL V9 & V10 PRODUCTION MILESTONES FULLY CERTIFIED!');
 console.log('====================================================================\n');
+
 

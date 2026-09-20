@@ -426,7 +426,7 @@ export default function BookingWizardPage() {
                 style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid #E5E0D8", margin: "0 0 24px 0", fontSize: "15px" }}
               />
 
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => setStep(1)}
@@ -467,7 +467,7 @@ export default function BookingWizardPage() {
                 style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid #E5E0D8", margin: "0 0 24px 0", fontSize: "15px" }}
               />
 
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => setStep(2)}
@@ -519,7 +519,7 @@ export default function BookingWizardPage() {
                 style={{ width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1px solid #E5E0D8", margin: "0 0 24px 0", fontSize: "15px" }}
               />
 
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => setStep(3)}
@@ -670,7 +670,7 @@ export default function BookingWizardPage() {
                 />
               </div>
 
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   onClick={() => setStep(4)}

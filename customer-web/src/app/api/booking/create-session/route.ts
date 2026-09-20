@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../lib/firebase";
 import { collection, addDoc, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 
+import { mirrorPaymentSessionStarted } from "../../../../lib/financial/sheets-payment-mirror-engine";
+
 const SERVICE_PRICES: Record<string, number> = {
   "Signature Bridal Makeover": 25000,
   "Pre-Wedding & Engagement Glam": 15000,
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
 
     if (hasActiveHold) {
       return NextResponse.json(
-        { error: "Another customer currently has an active 5-minute reservation hold on this date. Please try another date or wait 5 minutes." },
+        { error: "Another customer currently has an active 7-minute reservation hold on this date. Please try another date or wait a few minutes." },
         { status: 409 }
       );
     }
@@ -47,9 +49,9 @@ export async function POST(req: Request) {
     const totalAmount = basePrice + travelFee;
     const depositAmount = Math.round(totalAmount * 0.3);
 
-    // 3. Authoritative 5-Minute Expiry (Server Timestamp + 300 seconds)
+    // 3. Authoritative 7-Minute Expiry (Server Timestamp + 420 seconds)
     const now = Date.now();
-    const expiresAtMs = now + 300 * 1000; // 5 minutes
+    const expiresAtMs = now + 420 * 1000; // 7 minutes (420s)
     const expiresAtIso = new Date(expiresAtMs).toISOString();
     const bookingId = `BK-${now.toString().slice(-6)}`;
 
@@ -99,6 +101,34 @@ export async function POST(req: Request) {
       status: "DEPOSIT_PENDING",
       createdAt: serverTimestamp(),
     });
+
+    // 6. Stage 1 Operational Mirror Dispatch to Google Sheets (Payments & PaymentEvents)
+    mirrorPaymentSessionStarted({
+      sessionRecord: {
+        paymentSessionId: `psess_${bookingId}`,
+        bookingId,
+        customerId: email || phone,
+        customerName: fullName,
+        customerPhone: phone,
+        customerEmail: email || "guest@makeoversbyprachi.com",
+        organizationId: "org_default",
+        serviceId: service,
+        serviceName: service,
+        location: city || "Jodhpur",
+        eventDate: date,
+        eventTime: readyTime || "10:00",
+        bookingStatus: "DEPOSIT_PENDING",
+        requiredDeposit: depositAmount,
+        currency: "INR",
+        upiVpa: "bhawanisanker1967@okaxis",
+        paymentMethod: "UPI_QR",
+        qrType: "STATIC_UPI",
+        paymentSessionCreatedAt: isoNow,
+        paymentSessionExpiresAt: expiresAtIso,
+        paymentSessionStatus: "PENDING",
+      },
+      requestId: `req_${now}`,
+    }).catch(err => console.warn("[Server API] Sheets mirror dispatch notice:", err));
 
     return NextResponse.json({
       success: true,

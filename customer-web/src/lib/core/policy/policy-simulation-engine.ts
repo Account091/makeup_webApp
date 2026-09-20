@@ -60,12 +60,11 @@ export function simulatePolicyChange(params: {
 
     const delta: Record<string, { old: any; new: any }> = {};
     const allKeys = new Set([...Object.keys(oldParams), ...Object.keys(newParams)]);
-
-    for (const key of allKeys) {
+    Array.from(allKeys).forEach((key) => {
       if (oldParams[key] !== newParams[key]) {
         delta[key] = { old: oldParams[key], new: newParams[key] };
       }
-    }
+    });
 
     return {
       scenarioName: sc.scenarioName,

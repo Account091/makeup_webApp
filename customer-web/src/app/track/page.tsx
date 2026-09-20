@@ -194,7 +194,7 @@ export default function TrackPage() {
               Booking Reference: #{result.bookingId}
             </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "14px", color: "#2C1320", marginBottom: "20px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px", fontSize: "14px", color: "#2C1320", marginBottom: "20px" }}>
               <div><strong>Client Name:</strong> {result.customerName}</div>
               <div><strong>WhatsApp Contact:</strong> {result.phone}</div>
               <div><strong>Service Selected:</strong> {result.serviceTitle}</div>

@@ -12,6 +12,46 @@ import {
 const lifecycleStore = new Map<string, CustomerLifecycleRecord>();
 const cxProfileStore = new Map<string, CustomerExperienceProfile>();
 
+export interface DynamicCsatNpsResult {
+  averageRating: number | null;
+  csatFormatted: string; // e.g. "4.93 / 5.0" or "No ratings yet"
+  npsScore: number | null;
+  npsFormatted: string; // e.g. "+88" or "No data"
+  totalResponses: number;
+}
+
+/**
+ * Calculates dynamic CSAT rating and NPS score from actual stored customer review responses.
+ * Avoids hardcoding static numbers when no customer responses exist.
+ */
+export function calculateDynamicCsatAndNps(ratings: number[]): DynamicCsatNpsResult {
+  if (!ratings || ratings.length === 0) {
+    return {
+      averageRating: null,
+      csatFormatted: 'No ratings yet',
+      npsScore: null,
+      npsFormatted: 'No data',
+      totalResponses: 0,
+    };
+  }
+
+  const sum = ratings.reduce((acc, r) => acc + r, 0);
+  const avg = Math.round((sum / ratings.length) * 100) / 100;
+
+  // NPS Calculation: Promoters (9-10 / 5 stars = 5), Passive (4), Detractors (1-3)
+  const promoters = ratings.filter(r => r === 5).length;
+  const detractors = ratings.filter(r => r <= 3).length;
+  const nps = Math.round(((promoters - detractors) / ratings.length) * 100);
+
+  return {
+    averageRating: avg,
+    csatFormatted: `${avg.toFixed(2)} / 5.0`,
+    npsScore: nps,
+    npsFormatted: nps >= 0 ? `+${nps}` : `${nps}`,
+    totalResponses: ratings.length,
+  };
+}
+
 export function updateCustomerLifecycleStage(params: {
   customerId: string;
   organizationId: string;
