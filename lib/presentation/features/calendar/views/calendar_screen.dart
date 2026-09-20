@@ -95,25 +95,53 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(height: 24),
 
                 // Action Buttons Bar
-                Row(
-                  children: [
-                    Expanded(
-                      child: CustomButton(
-                        label: 'Block Date Slot',
-                        icon: Icons.block,
-                        onPressed: _showBlockSlotDialog,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: CustomButton(
-                        label: 'Manual Override',
-                        isSecondary: true,
-                        icon: Icons.admin_panel_settings,
-                        onPressed: _showManualOverrideDialog,
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, btnConstraints) {
+                    if (btnConstraints.maxWidth < 450) {
+                      return Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: CustomButton(
+                              label: 'Block Date Slot',
+                              icon: Icons.block,
+                              onPressed: _showBlockSlotDialog,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: CustomButton(
+                              label: 'Manual Override',
+                              isSecondary: true,
+                              icon: Icons.admin_panel_settings,
+                              onPressed: _showManualOverrideDialog,
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: CustomButton(
+                            label: 'Block Date Slot',
+                            icon: Icons.block,
+                            onPressed: _showBlockSlotDialog,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: CustomButton(
+                            label: 'Manual Override',
+                            isSecondary: true,
+                            icon: Icons.admin_panel_settings,
+                            onPressed: _showManualOverrideDialog,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -155,7 +183,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cellWidth = constraints.maxWidth / 7;
-        final aspectRatio = cellWidth > 80 ? 1.05 : (cellWidth > 52 ? 0.85 : 0.72);
+        final aspectRatio = cellWidth > 90 ? 0.95 : (cellWidth > 56 ? 0.78 : 0.65);
 
         return GridView.builder(
           shrinkWrap: true,
@@ -193,33 +221,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
             return InkWell(
               onTap: () => _onDateTapped(day, dateKey, slots),
               child: Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
                 decoration: BoxDecoration(
                   color: cardBg,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.lightBorder),
                 ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       '$day',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                        fontSize: cellWidth > 50 ? 12 : 10,
                         color: textColor,
                       ),
                     ),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Column(
-                        children: [
-                          _buildSlotDot(slots[DaySlotType.morning], 'M'),
-                          const SizedBox(height: 1),
-                          _buildSlotDot(slots[DaySlotType.afternoon], 'A'),
-                          const SizedBox(height: 1),
-                          _buildSlotDot(slots[DaySlotType.evening], 'E'),
-                        ],
+                    const SizedBox(height: 2),
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildSlotDot(slots[DaySlotType.morning], 'M'),
+                            const SizedBox(height: 1),
+                            _buildSlotDot(slots[DaySlotType.afternoon], 'A'),
+                            const SizedBox(height: 1),
+                            _buildSlotDot(slots[DaySlotType.evening], 'E'),
+                          ],
+                        ),
                       ),
                     ),
                   ],
