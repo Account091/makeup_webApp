@@ -45,74 +45,79 @@ class _CalendarScreenState extends State<CalendarScreen> {
               .copyWith(color: AppColors.roseGold, fontSize: 18),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusLegend(),
-            const SizedBox(height: 16),
-
-            // Month Header Navigation
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${_monthName(_focusedMonth.month)} ${_focusedMonth.year}',
-                  style: AppTextStyles.headingDisplay.copyWith(fontSize: 20),
+                _buildStatusLegend(),
+                const SizedBox(height: 16),
+
+                // Month Header Navigation
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${_monthName(_focusedMonth.month)} ${_focusedMonth.year}',
+                      style: AppTextStyles.headingDisplay.copyWith(fontSize: 20),
+                    ),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () {
+                            setState(() {
+                              _focusedMonth = DateTime(
+                                  _focusedMonth.year, _focusedMonth.month - 1);
+                            });
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () {
+                            setState(() {
+                              _focusedMonth = DateTime(
+                                  _focusedMonth.year, _focusedMonth.month + 1);
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
+
+                // Calendar Days Grid
+                _buildCalendarGrid(),
+                const SizedBox(height: 24),
+
+                // Action Buttons Bar
                 Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left),
-                      onPressed: () {
-                        setState(() {
-                          _focusedMonth = DateTime(
-                              _focusedMonth.year, _focusedMonth.month - 1);
-                        });
-                      },
+                    Expanded(
+                      child: CustomButton(
+                        label: 'Block Date Slot',
+                        icon: Icons.block,
+                        onPressed: _showBlockSlotDialog,
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () {
-                        setState(() {
-                          _focusedMonth = DateTime(
-                              _focusedMonth.year, _focusedMonth.month + 1);
-                        });
-                      },
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: CustomButton(
+                        label: 'Manual Override',
+                        isSecondary: true,
+                        icon: Icons.admin_panel_settings,
+                        onPressed: _showManualOverrideDialog,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-
-            // Calendar Days Grid
-            _buildCalendarGrid(),
-            const SizedBox(height: 24),
-
-            // Action Buttons Bar
-            Row(
-              children: [
-                Expanded(
-                  child: CustomButton(
-                    label: 'Block Date Slot',
-                    icon: Icons.block,
-                    onPressed: _showBlockSlotDialog,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: CustomButton(
-                    label: 'Manual Override',
-                    isSecondary: true,
-                    icon: Icons.admin_panel_settings,
-                    onPressed: _showManualOverrideDialog,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -147,71 +152,81 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildCalendarGrid() {
     final daysInMonth = DateUtils.getDaysInMonth(_focusedMonth.year, _focusedMonth.month);
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 7,
-        childAspectRatio: 0.85,
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-      ),
-      itemCount: daysInMonth,
-      itemBuilder: (context, index) {
-        final day = index + 1;
-        final dateKey = '${_focusedMonth.year}-${_focusedMonth.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-        final slots = _dateSlots[dateKey] ?? {
-          DaySlotType.morning: 'Available',
-          DaySlotType.afternoon: 'Available',
-          DaySlotType.evening: 'Available',
-        };
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cellWidth = constraints.maxWidth / 7;
+        final aspectRatio = cellWidth > 80 ? 1.05 : (cellWidth > 52 ? 0.85 : 0.72);
 
-        final isTravel = slots.values.any((v) => v.contains('Travel Buffer'));
-        final isBooked = slots.values.any((v) => v.contains('Confirmed'));
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            childAspectRatio: aspectRatio,
+            crossAxisSpacing: cellWidth > 60 ? 6 : 4,
+            mainAxisSpacing: cellWidth > 60 ? 6 : 4,
+          ),
+          itemCount: daysInMonth,
+          itemBuilder: (context, index) {
+            final day = index + 1;
+            final dateKey = '${_focusedMonth.year}-${_focusedMonth.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+            final slots = _dateSlots[dateKey] ?? {
+              DaySlotType.morning: 'Available',
+              DaySlotType.afternoon: 'Available',
+              DaySlotType.evening: 'Available',
+            };
 
-        Color cardBg = Colors.white;
-        Color textColor = AppColors.deepPlum;
+            final isTravel = slots.values.any((v) => v.contains('Travel Buffer'));
+            final isBooked = slots.values.any((v) => v.contains('Confirmed'));
 
-        if (isTravel) {
-          cardBg = AppColors.statusCompleted;
-          textColor = Colors.white;
-        } else if (isBooked) {
-          cardBg = AppColors.statusConfirmed.withValues(alpha: 0.85);
-          textColor = Colors.white;
-        }
+            Color cardBg = Colors.white;
+            Color textColor = AppColors.deepPlum;
 
-        return InkWell(
-          onTap: () => _onDateTapped(day, dateKey, slots),
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.lightBorder),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$day',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: textColor,
-                  ),
+            if (isTravel) {
+              cardBg = AppColors.statusCompleted;
+              textColor = Colors.white;
+            } else if (isBooked) {
+              cardBg = AppColors.statusConfirmed.withValues(alpha: 0.85);
+              textColor = Colors.white;
+            }
+
+            return InkWell(
+              onTap: () => _onDateTapped(day, dateKey, slots),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.lightBorder),
                 ),
-                Column(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildSlotDot(slots[DaySlotType.morning], 'M'),
-                    const SizedBox(height: 1),
-                    _buildSlotDot(slots[DaySlotType.afternoon], 'A'),
-                    const SizedBox(height: 1),
-                    _buildSlotDot(slots[DaySlotType.evening], 'E'),
+                    Text(
+                      '$day',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: textColor,
+                      ),
+                    ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        children: [
+                          _buildSlotDot(slots[DaySlotType.morning], 'M'),
+                          const SizedBox(height: 1),
+                          _buildSlotDot(slots[DaySlotType.afternoon], 'A'),
+                          const SizedBox(height: 1),
+                          _buildSlotDot(slots[DaySlotType.evening], 'E'),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

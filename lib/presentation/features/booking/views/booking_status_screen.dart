@@ -62,49 +62,54 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
               .copyWith(color: AppColors.roseGold, fontSize: 16),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Check Booking Progress',
-                style: AppTextStyles.headingDisplay.copyWith(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(
-                'Enter your Booking Reference ID or WhatsApp Phone Number to check status and download PDF invoices.',
-                style: AppTextStyles.bodySecondary),
-            const SizedBox(height: 16),
-
-            // Search Bar
-            Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter Booking ID (e.g. BK-2026-001)',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(),
+                Text('Check Booking Progress',
+                    style: AppTextStyles.headingDisplay.copyWith(fontSize: 22)),
+                const SizedBox(height: 4),
+                Text(
+                    'Enter your Booking Reference ID or WhatsApp Phone Number to check status and download PDF invoices.',
+                    style: AppTextStyles.bodySecondary),
+                const SizedBox(height: 16),
+
+                // Search Bar
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter Booking ID (e.g. BK-2026-001)',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    CustomButton(
+                      label: 'Search',
+                      icon: Icons.search,
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Booking Record Synced!')),
+                        );
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                CustomButton(
-                  label: 'Search',
-                  icon: Icons.search,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Booking Record Synced!')),
-                    );
-                  },
-                ),
+                const SizedBox(height: 24),
+
+                _buildBookingStatusCard(context),
               ],
             ),
-            const SizedBox(height: 24),
-
-            _buildBookingStatusCard(context),
-          ],
+          ),
         ),
       ),
     );
@@ -182,39 +187,91 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Actions
-          Row(
-            children: [
-              Expanded(
-                child: CustomButton(
-                  label: 'Download PDF Invoice',
-                  icon: Icons.picture_as_pdf,
-                  onPressed: () => _generateAndPrintPdf(b),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    UpiQrPaymentDialog.show(
-                      context,
-                      amount: b.commercials.depositRequired > 0
-                          ? b.commercials.depositRequired
-                          : b.commercials.totalPrice,
-                      bookingId: b.id,
-                      serviceName: b.serviceTitle,
-                    );
-                  },
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Pay via UPI QR'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepPlum,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+          // Actions with responsive layout
+          LayoutBuilder(
+            builder: (context, cardConstraints) {
+              final isSmall = cardConstraints.maxWidth < 480;
+              if (isSmall) {
+                return Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: CustomButton(
+                        label: 'Download PDF Invoice',
+                        icon: Icons.picture_as_pdf,
+                        onPressed: () => _generateAndPrintPdf(b),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          UpiQrPaymentDialog.show(
+                            context,
+                            amount: b.commercials.depositRequired > 0
+                                ? b.commercials.depositRequired
+                                : b.commercials.totalPrice,
+                            bookingId: b.id,
+                            serviceName: b.serviceTitle,
+                          );
+                        },
+                        icon: const Icon(Icons.qr_code, color: Colors.white, size: 18),
+                        label: const Text(
+                          'Simulate UPI Payment',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.deepPlum,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(
+                    child: CustomButton(
+                      label: 'Download PDF Invoice',
+                      icon: Icons.picture_as_pdf,
+                      onPressed: () => _generateAndPrintPdf(b),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        UpiQrPaymentDialog.show(
+                          context,
+                          amount: b.commercials.depositRequired > 0
+                              ? b.commercials.depositRequired
+                              : b.commercials.totalPrice,
+                          bookingId: b.id,
+                          serviceName: b.serviceTitle,
+                        );
+                      },
+                      icon: const Icon(Icons.qr_code, color: Colors.white, size: 18),
+                      label: const Text(
+                        'Simulate UPI Payment',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.deepPlum,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

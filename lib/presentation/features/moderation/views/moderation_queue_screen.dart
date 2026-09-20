@@ -41,42 +41,55 @@ class _ModerationQueueScreenState extends State<ModerationQueueScreen> {
               .copyWith(color: AppColors.roseGold, fontSize: 18),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Moderation Queue',
-                style: AppTextStyles.headingDisplay.copyWith(fontSize: 20)),
-            const SizedBox(height: 4),
-            Text('Review user comments and testimonials before they go live on the website.',
-                style: AppTextStyles.bodySecondary),
-            const SizedBox(height: 16),
-            if (_comments.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Text('No pending items in moderation queue.',
-                      style: AppTextStyles.bodySecondary),
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _comments.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final item = _comments[index];
-                  return _buildModerationCard(context, item, index);
-                },
-              ),
-          ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Moderation Queue',
+                    style: AppTextStyles.headingDisplay.copyWith(fontSize: 22)),
+                const SizedBox(height: 4),
+                Text('Review user comments and testimonials before they go live on the website.',
+                    style: AppTextStyles.bodySecondary),
+                const SizedBox(height: 16),
+                if (_comments.isEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Text('No pending items in moderation queue.',
+                          style: AppTextStyles.bodySecondary),
+                    ),
+                  )
+                else
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final width = constraints.maxWidth;
+                      final int cols = width > 760 ? 2 : 1;
+                      final double cardWidth = cols == 1
+                          ? width
+                          : (width - (cols - 1) * 16) / cols;
+
+                      return Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: _comments.asMap().entries.map((entry) => SizedBox(
+                          width: cardWidth,
+                          child: _buildModerationCard(context, entry.value, entry.key),
+                        )).toList(),
+                      );
+                    },
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

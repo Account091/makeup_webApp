@@ -51,28 +51,41 @@ class CustomerCrmScreen extends StatelessWidget {
               .copyWith(color: AppColors.roseGold, fontSize: 18),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Client Profiles & History',
-                style: AppTextStyles.headingDisplay.copyWith(fontSize: 20)),
-            const SizedBox(height: 4),
-            Text('Track client bookings, preferences, and lifetime value.',
-                style: AppTextStyles.bodySecondary),
-            const SizedBox(height: 16),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _mockCustomers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final customer = _mockCustomers[index];
-                return _buildCustomerCard(context, customer);
-              },
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Client Profiles & History',
+                    style: AppTextStyles.headingDisplay.copyWith(fontSize: 22)),
+                const SizedBox(height: 4),
+                Text('Track client bookings, preferences, and lifetime value.',
+                    style: AppTextStyles.bodySecondary),
+                const SizedBox(height: 20),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth;
+                    final int cols = width > 760 ? 2 : 1;
+                    final double cardWidth = cols == 1
+                        ? width
+                        : (width - (cols - 1) * 16) / cols;
+
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: _mockCustomers.map((customer) => SizedBox(
+                        width: cardWidth,
+                        child: _buildCustomerCard(context, customer),
+                      )).toList(),
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -47,105 +47,128 @@ class _WhatsappDashboardScreenState extends State<WhatsappDashboardScreen> {
               .copyWith(color: AppColors.roseGold, fontSize: 16),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('WhatsApp Automation Center',
-                style: AppTextStyles.headingDisplay.copyWith(fontSize: 20)),
-            const SizedBox(height: 4),
-            Text(
-                'Track automated message journeys, delivery statistics, and communication audit logs.',
-                style: AppTextStyles.bodySecondary),
-            const SizedBox(height: 16),
-
-            // Statistics Bar
-            Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildStatTile('Sent', '1,248', Colors.blue),
+                Text('WhatsApp Automation Center',
+                    style: AppTextStyles.headingDisplay.copyWith(fontSize: 20)),
+                const SizedBox(height: 4),
+                Text(
+                    'Track automated message journeys, delivery statistics, and communication audit logs.',
+                    style: AppTextStyles.bodySecondary),
+                const SizedBox(height: 16),
+
+                // Statistics Bar
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 420;
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatTile('Sent', '1,248', Colors.blue, isNarrow: isNarrow),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildStatTile('Delivered', '1,194', AppColors.emeraldGreen, isNarrow: isNarrow),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildStatTile('Read', '983', AppColors.roseGold, isNarrow: isNarrow),
+                        ),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildStatTile('Delivered', '1,194', AppColors.emeraldGreen),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildStatTile('Read', '983', AppColors.roseGold),
+                const SizedBox(height: 24),
+
+                // Automation Trigger Rules Toggles
+                Text('Configured Journey Triggers',
+                    style: AppTextStyles.headingTitle.copyWith(fontSize: 18)),
+                const SizedBox(height: 8),
+                _buildRuleToggle('Inquiry Acknowledgment', 'Send instant WhatsApp greeting on form submission', true),
+                _buildRuleToggle('Quote Delivery Card', 'Send quote breakdown with [Pay Advance] button', true),
+                _buildRuleToggle('Deposit Pending Reminder', 'Remind +4h & +24h before date release', true),
+                _buildRuleToggle('Pre-Event 48h Skincare Prep', 'Send skincare preparation guidelines', true),
+                _buildRuleToggle('24h Appointment Confirm', 'Request 1-tap appointment confirmation', true),
+                const SizedBox(height: 24),
+
+                // Audit Logs (automationEvents collection)
+                Text('`automationEvents` Delivery Logs',
+                    style: AppTextStyles.headingTitle.copyWith(fontSize: 18)),
+                const SizedBox(height: 8),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _automationLogs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final log = _automationLogs[index];
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.lightBorder),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  log['trigger'],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.sectionHeader,
+                                ),
+                                Text(
+                                  log['client'],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.bodySecondary,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Chip(
+                            backgroundColor: log['status'] == 'Read'
+                                ? AppColors.roseGold.withValues(alpha: 0.15)
+                                : Colors.blue.withValues(alpha: 0.15),
+                            label: Text(
+                              '${log['status']} • ${log['time']}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: log['status'] == 'Read'
+                                    ? AppColors.roseGold
+                                    : Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // Automation Trigger Rules Toggles
-            Text('Configured Journey Triggers',
-                style: AppTextStyles.headingTitle.copyWith(fontSize: 18)),
-            const SizedBox(height: 8),
-            _buildRuleToggle('Inquiry Acknowledgment', 'Send instant WhatsApp greeting on form submission', true),
-            _buildRuleToggle('Quote Delivery Card', 'Send quote breakdown with [Pay Advance] button', true),
-            _buildRuleToggle('Deposit Pending Reminder', 'Remind +4h & +24h before date release', true),
-            _buildRuleToggle('Pre-Event 48h Skincare Prep', 'Send skincare preparation guidelines', true),
-            _buildRuleToggle('24h Appointment Confirm', 'Request 1-tap appointment confirmation', true),
-            const SizedBox(height: 24),
-
-            // Audit Logs (automationEvents collection)
-            Text('`automationEvents` Delivery Logs',
-                style: AppTextStyles.headingTitle.copyWith(fontSize: 18)),
-            const SizedBox(height: 8),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _automationLogs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final log = _automationLogs[index];
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.lightBorder),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(log['trigger'], style: AppTextStyles.sectionHeader),
-                          Text(log['client'], style: AppTextStyles.bodySecondary),
-                        ],
-                      ),
-                      Chip(
-                        backgroundColor: log['status'] == 'Read'
-                            ? AppColors.roseGold.withValues(alpha: 0.15)
-                            : Colors.blue.withValues(alpha: 0.15),
-                        label: Text(
-                          '${log['status']} • ${log['time']}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: log['status'] == 'Read'
-                                ? AppColors.roseGold
-                                : Colors.blue,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatTile(String label, String count, Color color) {
+  Widget _buildStatTile(String label, String count, Color color, {bool isNarrow = false}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.symmetric(vertical: 12, horizontal: isNarrow ? 6 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -153,10 +176,20 @@ class _WhatsappDashboardScreenState extends State<WhatsappDashboardScreen> {
       ),
       child: Column(
         children: [
-          Text(count,
-              style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-          Text(label, style: AppTextStyles.bodySecondary),
+          Text(
+            count,
+            style: TextStyle(
+              fontSize: isNarrow ? 15 : 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.bodySecondary.copyWith(fontSize: isNarrow ? 10 : 12),
+          ),
         ],
       ),
     );

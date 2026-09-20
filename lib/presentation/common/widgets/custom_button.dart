@@ -40,7 +40,7 @@ class CustomButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
         ),
         onPressed: isLoading ? null : onPressed,
         child: isLoading
@@ -54,6 +54,7 @@ class CustomButton extends StatelessWidget {
               )
             : Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
                     Icon(
@@ -63,15 +64,20 @@ class CustomButton extends StatelessWidget {
                           ? AppColors.roseGold
                           : AppColors.deepPlum,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                   ],
-                  Text(
-                    label,
-                    style: AppTextStyles.sectionHeader.copyWith(
-                      color: isSecondary
-                          ? AppColors.roseGold
-                          : AppColors.deepPlum,
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.sectionHeader.copyWith(
+                        color: isSecondary
+                            ? AppColors.roseGold
+                            : AppColors.deepPlum,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],

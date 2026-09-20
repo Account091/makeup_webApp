@@ -17,29 +17,39 @@ class CustomerHomeScreen extends StatelessWidget {
             // 1. Luxury Hero Banner
             _buildHeroSection(context),
 
-            // 2. Trust & Proof Bar
-            _buildProofBar(),
+            // Constrained luxury sections on desktop
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1200),
+                child: Column(
+                  children: [
+                    // 2. Trust & Proof Bar
+                    _buildProofBar(),
 
-            // 3. Signature Rajasthani Bridal Showcase
-            _buildSignatureShowcase(context),
+                    // 3. Signature Rajasthani Bridal Showcase
+                    _buildSignatureShowcase(context),
 
-            // 4. Featured Services Snapshot
-            _buildFeaturedServices(context),
+                    // 4. Featured Services Snapshot
+                    _buildFeaturedServices(context),
 
-            // 5. Before / After Transformations
-            _buildBeforeAfterSection(),
+                    // 5. Before / After Transformations
+                    _buildBeforeAfterSection(),
 
-            // 6. Social Reels & Video Cards
-            _buildSocialReelsSection(),
+                    // 6. Social Reels & Video Cards
+                    _buildSocialReelsSection(),
 
-            // 7. Verified Reviews & Testimonials
-            _buildReviewsSection(),
+                    // 7. Verified Reviews & Testimonials
+                    _buildReviewsSection(),
 
-            // 8. FAQ Accordion Section
-            _buildFaqSection(),
+                    // 8. FAQ Accordion Section
+                    _buildFaqSection(),
 
-            // 9. Footer & Quick Book CTA
-            _buildFooter(context),
+                    // 9. Footer & Quick Book CTA
+                    _buildFooter(context),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -134,6 +144,7 @@ class CustomerHomeScreen extends StatelessWidget {
 
   Widget _buildProofItem(IconData icon, String text) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: AppColors.roseGold, size: 18),
         const SizedBox(width: 6),

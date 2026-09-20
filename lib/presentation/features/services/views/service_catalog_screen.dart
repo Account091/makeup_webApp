@@ -229,51 +229,67 @@ class _ServiceCatalogScreenState extends State<ServiceCatalogScreen> {
             services = state.services;
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(
-                          'Bridal & Occasion Beauty Catalog',
-                          style: AppTextStyles.headingDisplay.copyWith(fontSize: 24),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bridal & Occasion Beauty Catalog',
+                              style: AppTextStyles.headingDisplay.copyWith(fontSize: 22),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Publish services, rates, & inclusions live to Firestore & Website',
+                              style: AppTextStyles.bodySecondary,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Publish services, rates, & inclusions live to Firestore & Website',
-                          style: AppTextStyles.bodySecondary,
+                        ElevatedButton.icon(
+                          onPressed: () => _showAddServiceDialog(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('New Package'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.roseGold,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () => _showAddServiceDialog(context),
-                      icon: const Icon(Icons.add),
-                      label: const Text('New Package'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.roseGold,
-                        foregroundColor: Colors.white,
-                      ),
+                    const SizedBox(height: 20),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final int cols = width > 900 ? 3 : (width > 600 ? 2 : 1);
+                        final double cardWidth = cols == 1
+                            ? width
+                            : (width - (cols - 1) * 16) / cols;
+
+                        return Wrap(
+                          spacing: 16,
+                          runSpacing: 16,
+                          children: services.map((service) => SizedBox(
+                            width: cardWidth,
+                            child: _buildServiceCard(context, service),
+                          )).toList(),
+                        );
+                      },
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: services.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final service = services[index];
-                    return _buildServiceCard(context, service);
-                  },
-                ),
-              ],
+              ),
             ),
           );
         },

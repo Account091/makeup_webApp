@@ -35,135 +35,165 @@ class _SettingsScreenState extends State<SettingsScreen> {
               .copyWith(color: AppColors.roseGold, fontSize: 18),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Global Dynamic Settings',
-                style: AppTextStyles.headingDisplay.copyWith(fontSize: 20)),
-            const SizedBox(height: 4),
-            Text('Control deposit rules, travel pricing tiers, and business info without code changes.',
-                style: AppTextStyles.bodySecondary),
-            const SizedBox(height: 20),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1100),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Global Dynamic Settings',
+                    style: AppTextStyles.headingDisplay.copyWith(fontSize: 22)),
+                const SizedBox(height: 4),
+                Text('Control deposit rules, travel pricing tiers, and business info without code changes.',
+                    style: AppTextStyles.bodySecondary),
+                const SizedBox(height: 20),
 
-            // 1. Business Info Card
-            _buildCardWrapper(
-              title: '1. Business Profile',
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _businessNameController,
-                    decoration: const InputDecoration(labelText: 'Brand Name', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _phoneController,
-                    decoration: const InputDecoration(labelText: 'Phone / WhatsApp', border: OutlineInputBorder()),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Contact Email', border: OutlineInputBorder()),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                // Responsive Top Cards (Business Profile & Deposit Rules)
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth > 720;
+                    if (isWide) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildBusinessProfileCard()),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildDepositRulesCard()),
+                        ],
+                      );
+                    }
+                    return Column(
+                      children: [
+                        _buildBusinessProfileCard(),
+                        const SizedBox(height: 16),
+                        _buildDepositRulesCard(),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
 
-            // 2. Deposit Rules Card
-            _buildCardWrapper(
-              title: '2. Deposit & Booking Rules',
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _depositPercentController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Default Deposit Percentage (%)',
-                      border: OutlineInputBorder(),
-                    ),
+                // 3. Dynamic Distance Travel Pricing Tiers
+                _buildCardWrapper(
+                  title: '3. Distance Travel Pricing Tiers (Jodhpur Base)',
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _tier1Controller,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: '0 – 10 km Travel Charge (₹)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _tier2Controller,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: '10 – 25 km Travel Charge (₹)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _tier3Controller,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: '25 – 50 km Travel Charge (₹)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _tier4Controller,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: '50 – 100 km Travel Charge (₹)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Note: 100+ km outstation travel requires custom quote.',
+                          style: AppTextStyles.bodySecondary),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _depositFixedController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Minimum Fixed Deposit Amount (₹)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 24),
 
-            // 3. Dynamic Distance Travel Pricing Tiers
-            _buildCardWrapper(
-              title: '3. Distance Travel Pricing Tiers (Jodhpur Base)',
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _tier1Controller,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: '0 – 10 km Travel Charge (₹)',
-                      border: OutlineInputBorder(),
-                    ),
+                // Save Settings CTA Button
+                SizedBox(
+                  width: double.infinity,
+                  child: CustomButton(
+                    label: 'Save Configuration Settings',
+                    icon: Icons.save,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Settings saved successfully in Firestore!'),
+                          backgroundColor: AppColors.emeraldGreen,
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _tier2Controller,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: '10 – 25 km Travel Charge (₹)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _tier3Controller,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: '25 – 50 km Travel Charge (₹)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _tier4Controller,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: '50 – 100 km Travel Charge (₹)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Note: 100+ km outstation travel requires custom quote.',
-                      style: AppTextStyles.bodySecondary),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-
-            // Save Settings CTA Button
-            SizedBox(
-              width: double.infinity,
-              child: CustomButton(
-                label: 'Save Configuration Settings',
-                icon: Icons.save,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Settings saved successfully in Firestore!'),
-                      backgroundColor: AppColors.emeraldGreen,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBusinessProfileCard() {
+    return _buildCardWrapper(
+      title: '1. Business Profile',
+      child: Column(
+        children: [
+          TextField(
+            controller: _businessNameController,
+            decoration: const InputDecoration(labelText: 'Brand Name', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _phoneController,
+            decoration: const InputDecoration(labelText: 'Phone / WhatsApp', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _emailController,
+            decoration: const InputDecoration(labelText: 'Contact Email', border: OutlineInputBorder()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDepositRulesCard() {
+    return _buildCardWrapper(
+      title: '2. Deposit & Booking Rules',
+      child: Column(
+        children: [
+          TextField(
+            controller: _depositPercentController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Default Deposit Percentage (%)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _depositFixedController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Minimum Fixed Deposit Amount (₹)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -302,93 +302,137 @@ class AdminDashboardScreen extends StatelessWidget {
               .where((b) => b.status == BookingStatus.confirmed)
               .length;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. KPI Cards Row
-                Row(
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _buildKpiCard(
-                        'Awaiting Approval',
-                        awaitingApprovalCount.toString(),
-                        Icons.hourglass_top,
-                        AppColors.statusAwaitingApproval,
-                      ),
+                    // 1. Adaptive KPI Cards
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 620;
+                        if (isCompact) {
+                          return Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildKpiCard(
+                                      'Awaiting Approval',
+                                      awaitingApprovalCount.toString(),
+                                      Icons.hourglass_top,
+                                      AppColors.statusAwaitingApproval,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: _buildKpiCard(
+                                      'Deposit Pending',
+                                      depositPendingCount.toString(),
+                                      Icons.payments_outlined,
+                                      AppColors.statusDepositPending,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              _buildKpiCard(
+                                'Confirmed Bookings',
+                                confirmedCount.toString(),
+                                Icons.event_available,
+                                AppColors.statusConfirmed,
+                              ),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _buildKpiCard(
+                                'Awaiting Approval',
+                                awaitingApprovalCount.toString(),
+                                Icons.hourglass_top,
+                                AppColors.statusAwaitingApproval,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildKpiCard(
+                                'Deposit Pending',
+                                depositPendingCount.toString(),
+                                Icons.payments_outlined,
+                                AppColors.statusDepositPending,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildKpiCard(
+                                'Confirmed Bookings',
+                                confirmedCount.toString(),
+                                Icons.event_available,
+                                AppColors.statusConfirmed,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildKpiCard(
-                        'Deposit Pending',
-                        depositPendingCount.toString(),
-                        Icons.payments_outlined,
-                        AppColors.statusDepositPending,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildKpiCard(
-                        'Confirmed',
-                        confirmedCount.toString(),
-                        Icons.event_available,
-                        AppColors.statusConfirmed,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                // 2. Section Header & New Inquiries
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Booking Inquiries Pipeline',
-                      style: AppTextStyles.headingTitle.copyWith(fontSize: 18),
-                    ),
-                    Chip(
-                      backgroundColor: AppColors.softRose.withValues(alpha: 0.5),
-                      label: Text(
-                        '${bookings.length} Total',
-                        style: AppTextStyles.bodySecondary.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.deepPlum,
+                    // 2. Section Header & New Inquiries
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Booking Inquiries Pipeline',
+                          style: AppTextStyles.headingTitle.copyWith(fontSize: 18),
                         ),
-                      ),
+                        Chip(
+                          backgroundColor: AppColors.softRose.withValues(alpha: 0.5),
+                          label: Text(
+                            '${bookings.length} Total',
+                            style: AppTextStyles.bodySecondary.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.deepPlum,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 12),
+
+                    if (bookings.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'No booking inquiries found.',
+                            style: AppTextStyles.bodySecondary,
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: bookings.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final booking = bookings[index];
+                          return _buildBookingCard(context, booking);
+                        },
+                      ),
                   ],
                 ),
-                const SizedBox(height: 12),
-
-                if (bookings.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'No booking inquiries found.',
-                        style: AppTextStyles.bodySecondary,
-                      ),
-                    ),
-                  )
-                else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: bookings.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final booking = bookings[index];
-                      return _buildBookingCard(context, booking);
-                    },
-                  ),
-              ],
+              ),
             ),
           );
         },
@@ -426,7 +470,7 @@ class AdminDashboardScreen extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: AppTextStyles.bodySecondary.copyWith(fontSize: 10),
+            style: AppTextStyles.bodySecondary.copyWith(fontSize: 11),
           ),
         ],
       ),
@@ -452,36 +496,47 @@ class AdminDashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row: Customer Name & Status
+            // Header Row: Customer Name & Status with overflow guard
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.softRose,
-                      child: Text(
-                        booking.customer.fullName[0].toUpperCase(),
-                        style: AppTextStyles.sectionHeader
-                            .copyWith(color: AppColors.deepPlum),
+                Expanded(
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: AppColors.softRose,
+                        child: Text(
+                          booking.customer.fullName.isNotEmpty
+                              ? booking.customer.fullName[0].toUpperCase()
+                              : 'C',
+                          style: AppTextStyles.sectionHeader
+                              .copyWith(color: AppColors.deepPlum),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          booking.customer.fullName,
-                          style: AppTextStyles.sectionHeader,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              booking.customer.fullName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.sectionHeader,
+                            ),
+                            Text(
+                              booking.customer.phone,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodySecondary,
+                            ),
+                          ],
                         ),
-                        Text(
-                          booking.customer.phone,
-                          style: AppTextStyles.bodySecondary,
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 StatusBadge(status: booking.status),
               ],
             ),
@@ -495,43 +550,55 @@ class AdminDashboardScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     booking.serviceTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyPrimary
                         .copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Row(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 16,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Icon(Icons.calendar_today,
-                    color: AppColors.mutedGray, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  AppFormatters.formatDate(booking.event.eventDate),
-                  style: AppTextStyles.bodySecondary,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.calendar_today,
+                        color: AppColors.mutedGray, size: 15),
+                    const SizedBox(width: 5),
+                    Text(
+                      AppFormatters.formatDate(booking.event.eventDate),
+                      style: AppTextStyles.bodySecondary,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                const Icon(Icons.access_time,
-                    color: AppColors.mutedGray, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  'Ready by ${booking.event.readyByTime}',
-                  style: AppTextStyles.bodySecondary,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.access_time,
+                        color: AppColors.mutedGray, size: 15),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Ready by ${booking.event.readyByTime}',
+                      style: AppTextStyles.bodySecondary,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.location_on_outlined,
-                    color: AppColors.mutedGray, size: 16),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${booking.event.venueLocation} (${booking.event.city})',
-                    style: AppTextStyles.bodySecondary,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.location_on_outlined,
+                        color: AppColors.mutedGray, size: 15),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${booking.event.venueLocation} (${booking.event.city})',
+                      style: AppTextStyles.bodySecondary,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -547,29 +614,33 @@ class AdminDashboardScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Total Quote', style: AppTextStyles.bodySecondary),
-                      Text(
-                        AppFormatters.formatCurrency(
-                            booking.commercials.totalPrice),
-                        style: AppTextStyles.sectionHeader
-                            .copyWith(color: AppColors.deepPlum),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Total Quote', style: AppTextStyles.bodySecondary),
+                        Text(
+                          AppFormatters.formatCurrency(
+                              booking.commercials.totalPrice),
+                          style: AppTextStyles.sectionHeader
+                              .copyWith(color: AppColors.deepPlum),
+                        ),
+                      ],
+                    ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('Advance Deposit', style: AppTextStyles.bodySecondary),
-                      Text(
-                        AppFormatters.formatCurrency(
-                            booking.commercials.depositRequired),
-                        style: AppTextStyles.sectionHeader
-                            .copyWith(color: AppColors.roseGold),
-                      ),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('Advance Deposit', style: AppTextStyles.bodySecondary),
+                        Text(
+                          AppFormatters.formatCurrency(
+                              booking.commercials.depositRequired),
+                          style: AppTextStyles.sectionHeader
+                              .copyWith(color: AppColors.roseGold),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -578,25 +649,53 @@ class AdminDashboardScreen extends StatelessWidget {
 
             // Action Buttons
             if (booking.status == BookingStatus.awaitingApproval)
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomButton(
-                      label: 'Approve & Quote',
-                      icon: Icons.check_circle_outline,
-                      onPressed: () => _showApproveModal(context, booking),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: CustomButton(
-                      label: 'Decline',
-                      isSecondary: true,
-                      icon: Icons.cancel_outlined,
-                      onPressed: () => _showDeclineModal(context, booking),
-                    ),
-                  ),
-                ],
+              LayoutBuilder(
+                builder: (context, cardConstraints) {
+                  if (cardConstraints.maxWidth < 360) {
+                    return Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: CustomButton(
+                            label: 'Approve & Quote',
+                            icon: Icons.check_circle_outline,
+                            onPressed: () => _showApproveModal(context, booking),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: CustomButton(
+                            label: 'Decline',
+                            isSecondary: true,
+                            icon: Icons.cancel_outlined,
+                            onPressed: () => _showDeclineModal(context, booking),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: CustomButton(
+                          label: 'Approve & Quote',
+                          icon: Icons.check_circle_outline,
+                          onPressed: () => _showApproveModal(context, booking),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: CustomButton(
+                          label: 'Decline',
+                          isSecondary: true,
+                          icon: Icons.cancel_outlined,
+                          onPressed: () => _showDeclineModal(context, booking),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               )
             else
               Row(

@@ -55,23 +55,26 @@ class _BookingInquiryScreenState extends State<BookingInquiryScreen> {
               .copyWith(color: AppColors.roseGold, fontSize: 16),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Request Event Slot',
-                style: AppTextStyles.headingDisplay,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Submit your date and event details. Prachi will review availability and send a customized quote.',
-                style: AppTextStyles.bodySecondary,
-              ),
-              const SizedBox(height: 24),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 800),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Request Event Slot',
+                    style: AppTextStyles.headingDisplay,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Submit your date and event details. Prachi will review availability and send a customized quote.',
+                    style: AppTextStyles.bodySecondary,
+                  ),
+                  const SizedBox(height: 24),
 
               // 1. Personal Info
               _buildSectionTitle('1. Contact Information'),
@@ -199,7 +202,9 @@ class _BookingInquiryScreenState extends State<BookingInquiryScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildSectionTitle(String title) {

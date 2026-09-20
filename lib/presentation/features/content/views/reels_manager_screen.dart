@@ -46,34 +46,50 @@ class _ReelsManagerScreenState extends State<ReelsManagerScreen> {
               .copyWith(color: AppColors.roseGold, fontSize: 18),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1200),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Social Reel Feed',
-                    style: AppTextStyles.headingDisplay.copyWith(fontSize: 20)),
-                CustomButton(
-                  label: '+ Add Reel',
-                  onPressed: _showAddReelModal,
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('Social Reel Feed',
+                        style: AppTextStyles.headingDisplay.copyWith(fontSize: 22)),
+                    CustomButton(
+                      label: '+ Add Reel',
+                      onPressed: _showAddReelModal,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final width = constraints.maxWidth;
+                    final int cols = width > 760 ? 2 : 1;
+                    final double cardWidth = cols == 1
+                        ? width
+                        : (width - (cols - 1) * 16) / cols;
+
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: _reels.asMap().entries.map((entry) => SizedBox(
+                        width: cardWidth,
+                        child: _buildReelCard(context, entry.value, entry.key),
+                      )).toList(),
+                    );
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _reels.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final reel = _reels[index];
-                return _buildReelCard(context, reel, index);
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
