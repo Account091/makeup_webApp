@@ -11,7 +11,7 @@
 
 export const GOOGLE_SHEETS_SCRIPT_URL =
   process.env.GOOGLE_SHEETS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbwrW-LiBBsmj2MBqsCaHUw55oqqXuIqWndH5oUJk5OGtQDNu_bNYIP_yGys3J70U9te/exec";
+  "https://script.google.com/macros/s/AKfycbyALFEurJX9pskfoAvnK-BZVuwMNueV4RcsEAJRZ6wZMP5q9BrU_tD0Vd_OF77BvkM1/exec";
 
 export type PaymentEventType =
   | 'PAYMENT_SESSION_STARTED'
@@ -35,6 +35,12 @@ export interface PaymentSheetRecord {
   serviceId: string;
   serviceName: string;
   location: string;
+  venue?: string;
+  city?: string;
+  packageName?: string;
+  totalAmount?: number;
+  remainingBalance?: number;
+  guestCount?: number;
   eventDate: string;
   eventTime: string;
   bookingStatus: string;
@@ -97,7 +103,7 @@ const mirrorPendingRetryQueue: Array<{ sheet: string; payload: any; error: strin
 async function dispatchToGoogleSheets(sheetTarget: 'Payments' | 'PaymentEvents', payload: any): Promise<boolean> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const res = await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
       method: "POST",
@@ -106,13 +112,16 @@ async function dispatchToGoogleSheets(sheetTarget: 'Payments' | 'PaymentEvents',
         targetSheet: sheetTarget,
         payload,
       }),
+      redirect: "follow",
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      console.warn(`[Sheets Mirror] HTTP warning (${res.status}) dispatching to '${sheetTarget}'. Firestore remains authoritative.`);
-      mirrorPendingRetryQueue.push({ sheet: sheetTarget, payload, error: `HTTP ${res.status}` });
+    const data = await res.json().catch(() => null);
+    if (!res.ok || (data && data.success === false)) {
+      const errMsg = data?.error || `HTTP ${res.status}`;
+      console.warn(`[Sheets Mirror] Google Apps Script notice on '${sheetTarget}': ${errMsg}. Firestore remains authoritative.`);
+      mirrorPendingRetryQueue.push({ sheet: sheetTarget, payload, error: errMsg });
       return false;
     }
 

@@ -3,10 +3,33 @@ import { db } from "../../../../lib/firebase";
 import { collection, query, where, getDocs, getDoc, setDoc, updateDoc, doc } from "firebase/firestore";
 import { mirrorPaymentProofSubmitted } from "../../../../lib/financial/sheets-payment-mirror-engine";
 
+async function uploadToImageCdn(base64DataUrl: string): Promise<string | null> {
+  try {
+    const rawBase64 = base64DataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
+    const formData = new URLSearchParams();
+    formData.append("key", "6d207e02198a847aa98d0a2a901485a5");
+    formData.append("action", "upload");
+    formData.append("source", rawBase64);
+    formData.append("format", "json");
+
+    const res = await fetch("https://freeimage.host/api/1/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    return data?.image?.url || data?.image?.display_url || null;
+  } catch (err) {
+    console.warn("[Image CDN] Upload notice:", err);
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { bookingId, utrNumber, paymentProofName } = body;
+    const { bookingId, utrNumber, paymentProofName, paymentProofUrl } = body;
+
+    console.log(`[submit-proof] Received submission for #${bookingId}: name='${paymentProofName}', urlLength=${paymentProofUrl ? paymentProofUrl.length : 0}, utr='${utrNumber}'`);
 
     if (!bookingId) {
       return NextResponse.json({ error: "Missing Booking Ref ID" }, { status: 400 });
@@ -63,7 +86,16 @@ export async function POST(req: Request) {
     }
 
     const proofSubmittedAtIso = new Date().toISOString();
-    const proofFileRef = `gs://makeoversbyprachi.appspot.com/payment_proofs/${paymentProofName || "uploaded_screenshot.png"}`;
+
+    // Upload base64 image to public CDN so Google Sheets can embed it visually!
+    let publicImageUrl: string | null = null;
+    if (paymentProofUrl && paymentProofUrl.startsWith("data:image")) {
+      console.log(`[submit-proof] Uploading screenshot to Image CDN...`);
+      publicImageUrl = await uploadToImageCdn(paymentProofUrl);
+      console.log(`[submit-proof] CDN Image URL: ${publicImageUrl}`);
+    }
+
+    const proofFileRef = publicImageUrl || paymentProofUrl || `gs://makeoversbyprachi.appspot.com/payment_proofs/${paymentProofName || "uploaded_screenshot.png"}`;
 
     // 4. Server-authoritative update in Firestore
     await updateDoc(doc(db, "bookings", bookingDoc.id), {
@@ -71,6 +103,7 @@ export async function POST(req: Request) {
       "payment.utrNumber": cleanUtr || "N/A",
       "payment.proofFileName": paymentProofName || "uploaded_screenshot.png",
       "payment.proofFileRef": proofFileRef,
+      "payment.proofUrl": publicImageUrl || proofFileRef,
       "payment.status": "VERIFICATION_PENDING",
       submittedAt: proofSubmittedAtIso,
     });
@@ -85,13 +118,19 @@ export async function POST(req: Request) {
         customerPhone: bookingData.customerDetails?.phone || "N/A",
         customerEmail: bookingData.customerDetails?.email || "guest@makeoversbyprachi.com",
         organizationId: "org_default",
-        serviceId: bookingData.serviceTitle || "Bridal Service",
-        serviceName: bookingData.serviceTitle || "Bridal Service",
-        location: bookingData.event?.city || "Jodhpur",
-        eventDate: bookingData.event?.date || "2026-10-01",
-        eventTime: bookingData.event?.readyByTime || "10:00",
-        bookingStatus: "PAYMENT_PROOF_SUBMITTED",
+        serviceId: bookingData.serviceTitle || "Signature Royal Bridal Makeover",
+        serviceName: bookingData.serviceTitle || "Signature Royal Bridal Makeover",
+        packageName: bookingData.packageName || "Royal Rajasthani Poshak & Jewelry Package",
+        venue: bookingData.event?.venue || "Gorbandh Palace",
+        city: bookingData.event?.city || "Jodhpur",
+        location: `${bookingData.event?.venue || "Venue"}, ${bookingData.event?.city || "Jodhpur"}`.trim(),
+        eventDate: bookingData.event?.date || "2026-11-20",
+        eventTime: bookingData.event?.readyByTime || "16:00",
+        guestCount: Number(bookingData.event?.guestCount) || 1,
+        totalAmount: bookingData.commercials?.totalAmount || 25000,
         requiredDeposit: bookingData.commercials?.depositRequired || 7500,
+        remainingBalance: (bookingData.commercials?.totalAmount || 25000) - (bookingData.commercials?.depositRequired || 7500),
+        bookingStatus: "PAYMENT_PROOF_SUBMITTED",
         currency: "INR",
         upiVpa: "bhawanisanker1967@okaxis",
         paymentMethod: "UPI_QR",

@@ -8,7 +8,7 @@ import '../../../../core/services/firebase_auth_service.dart';
 import '../../../../core/services/payment_vision_ai_service.dart';
 
 const String kGoogleSheetScriptUrl =
-    'https://script.google.com/macros/s/AKfycbwrW-LiBBsmj2MBqsCaHUw55oqqXuIqWndH5oUJk5OGtQDNu_bNYIP_yGys3J70U9te/exec';
+    'https://script.google.com/macros/s/AKfycbyALFEurJX9pskfoAvnK-BZVuwMNueV4RcsEAJRZ6wZMP5q9BrU_tD0Vd_OF77BvkM1/exec';
 
 /// Modal dialog for UPI QR Code Payment with 5-Minute Expiry Countdown,
 /// Hugging Face Vision AI Screenshot Verification, and Google Sheets Ledger sync.

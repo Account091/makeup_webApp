@@ -26,6 +26,8 @@ export default function BookingWizardPage() {
   const [timerSeconds, setTimerSeconds] = useState(300);
   const [timerActive, setTimerActive] = useState(false);
   const [paymentProofName, setPaymentProofName] = useState("");
+  const [paymentProofDataUrl, setPaymentProofDataUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [utrNumber, setUtrNumber] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -91,6 +93,18 @@ export default function BookingWizardPage() {
       }
 
       setBookingId(data.bookingId);
+      if (typeof window !== "undefined") {
+        try {
+          const existing = JSON.parse(localStorage.getItem("mbp_my_bookings") || "[]");
+          if (!existing.includes(data.bookingId)) {
+            existing.unshift(data.bookingId);
+            localStorage.setItem("mbp_my_bookings", JSON.stringify(existing));
+          }
+          if (phone) {
+            localStorage.setItem("mbp_last_phone", phone);
+          }
+        } catch (e) {}
+      }
       setServerTotal(data.totalAmount);
       setServerDeposit(data.depositAmount);
       setUpiVpa(data.upiVpa);
@@ -118,13 +132,24 @@ export default function BookingWizardPage() {
     setApiError("");
 
     try {
+      let base64ToSubmit = paymentProofDataUrl;
+      if (!base64ToSubmit && selectedFile) {
+        base64ToSubmit = await new Promise<string>((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result as string);
+          r.onerror = () => resolve("");
+          r.readAsDataURL(selectedFile);
+        });
+      }
+
       const res = await fetch("/api/booking/submit-proof", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bookingId,
           utrNumber,
-          paymentProofName: paymentProofName || "uploaded_screenshot.png",
+          paymentProofName: paymentProofName || selectedFile?.name || "uploaded_screenshot.png",
+          paymentProofUrl: base64ToSubmit || undefined,
         }),
       });
 
@@ -242,7 +267,41 @@ export default function BookingWizardPage() {
             ⚡ Once Admin verifies your UTR/screenshot, your booking status will update to CONFIRMED and your WhatsApp PDF receipt will be dispatched.
           </p>
 
-          <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+            <a
+              href={`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(`💄 ${service} - Makeovers by Prachi`)}&dates=${(date || "20261120").replace(/-/g, "")}/${(date || "20261120").replace(/-/g, "")}&details=${encodeURIComponent(
+                `👑 MAKEOVERS BY PRACHI - OFFICIAL BRIDAL APPOINTMENT\n\n` +
+                `💄 Makeup Service: ${service}\n` +
+                `📦 Selected Package: ${packageType}\n` +
+                `👰 Bride / Client: ${fullName}\n` +
+                `📱 WhatsApp Contact: ${phone}\n` +
+                `📍 Venue: ${venue}, ${city}\n` +
+                `⏰ Ready-by Time: ${readyTime}\n` +
+                `👥 Guest Count: ${guestCount} Person(s)\n\n` +
+                `💰 PAYMENT BREAKDOWN:\n` +
+                `• Total Package Quote: ₹${serverTotal.toLocaleString("en-IN")}\n` +
+                `• 30% Advance Deposit Paid: ₹${serverDeposit.toLocaleString("en-IN")}\n` +
+                `• Remaining Balance Payable at Venue: ₹${Math.max(0, serverTotal - serverDeposit).toLocaleString("en-IN")}\n` +
+                (utrNumber ? `• Submitted UTR Ref: ${utrNumber}\n` : "") +
+                `\n🔖 Booking Ref ID: #${bookingId}\n` +
+                `📞 Studio WhatsApp Support: +91 98290 12345`
+              )}&location=${encodeURIComponent(`${venue || "Venue"}, ${city}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                backgroundColor: "rgba(212, 175, 55, 0.15)",
+                color: "#D4AF37",
+                border: "1px solid #D4AF37",
+                padding: "12px 20px",
+                borderRadius: "20px",
+                textDecoration: "none",
+                fontWeight: "bold",
+                fontSize: "14px",
+              }}
+            >
+              📅 Add to Google Calendar
+            </a>
             <a
               href="/track"
               style={{
@@ -663,11 +722,59 @@ export default function BookingWizardPage() {
                   accept="image/*"
                   onChange={(e) => {
                     if (e.target.files && e.target.files[0]) {
-                      setPaymentProofName(e.target.files[0].name);
+                      const file = e.target.files[0];
+                      setSelectedFile(file);
+                      setPaymentProofName(file.name);
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const rawDataUrl = event.target?.result as string;
+                        setPaymentProofDataUrl(rawDataUrl);
+
+                        const img = new Image();
+                        img.onload = () => {
+                          try {
+                            const canvas = document.createElement("canvas");
+                            let width = img.width;
+                            let height = img.height;
+                            const maxDim = 1000;
+                            if (width > maxDim || height > maxDim) {
+                              if (width > height) {
+                                height = Math.round((height * maxDim) / width);
+                                width = maxDim;
+                              } else {
+                                width = Math.round((width * maxDim) / height);
+                                height = maxDim;
+                              }
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext("2d");
+                            if (ctx) {
+                              ctx.drawImage(img, 0, 0, width, height);
+                              setPaymentProofDataUrl(canvas.toDataURL("image/jpeg", 0.85));
+                            }
+                          } catch (e) {}
+                        };
+                        img.src = rawDataUrl;
+                      };
+                      reader.readAsDataURL(file);
                     }
                   }}
                   style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid #E5E0D8", fontSize: "14px" }}
                 />
+
+                {paymentProofDataUrl && (
+                  <div style={{ marginTop: "12px", textAlign: "center" }}>
+                    <div style={{ fontSize: "12px", fontWeight: "bold", color: "#2C1320", marginBottom: "6px" }}>
+                      📸 Selected Payment Proof Screenshot Preview:
+                    </div>
+                    <img
+                      src={paymentProofDataUrl}
+                      alt="Payment Proof Screenshot Preview"
+                      style={{ maxWidth: "100%", maxHeight: "180px", borderRadius: "12px", border: "2px solid #D4AF37", objectFit: "contain" }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
