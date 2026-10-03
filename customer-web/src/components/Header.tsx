@@ -77,10 +77,64 @@ export default function Header() {
             <a href="/track" style={{ color: "#E5E0D8", textDecoration: "none", transition: "color 0.2s" }}>
               Track Invoice
             </a>
+            <a href="/my-wedding" style={{ color: "#D4AF37", textDecoration: "none", fontWeight: "700", transition: "color 0.2s" }}>
+              👑 My Wedding
+            </a>
+
+            {/* Language Toggle */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                background: "rgba(212, 175, 55, 0.12)",
+                border: "1px solid rgba(212, 175, 55, 0.4)",
+                borderRadius: "20px",
+                padding: "3px 8px",
+                fontSize: "12px",
+                fontWeight: "600",
+                gap: "6px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("prachi_lang_change", { detail: "en" }));
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#FFFFFF",
+                  cursor: "pointer",
+                  padding: "2px 4px",
+                  fontWeight: "bold",
+                }}
+              >
+                EN
+              </button>
+              <span style={{ color: "rgba(212, 175, 55, 0.5)" }}>|</span>
+              <button
+                type="button"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("prachi_lang_change", { detail: "hi" }));
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#D4AF37",
+                  cursor: "pointer",
+                  padding: "2px 4px",
+                  fontWeight: "bold",
+                }}
+              >
+                हिन्दी
+              </button>
+            </div>
 
             {/* AI Concierge Trigger Button */}
             <button
-              onClick={() => setAiModalOpen(true)}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("open_booking_assistant", { detail: "" }));
+              }}
               style={{
                 background: "rgba(212, 175, 55, 0.15)",
                 border: "1px solid rgba(212, 175, 55, 0.6)",
@@ -164,6 +218,9 @@ export default function Header() {
             </a>
             <a href="/track" onClick={() => setMobileOpen(false)} style={{ color: "#E5E0D8", textDecoration: "none" }}>
               🧾 Track PDF Invoice
+            </a>
+            <a href="/my-wedding" onClick={() => setMobileOpen(false)} style={{ color: "#D4AF37", textDecoration: "none", fontWeight: "700" }}>
+              👑 My Wedding Portal
             </a>
 
             <button

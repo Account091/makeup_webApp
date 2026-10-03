@@ -170,6 +170,201 @@ class _AdminPaymentVerificationScreenState
     return clean;
   }
 
+  void _promptStep5BankReconciliation(PaymentSubmissionItem item) {
+    bool bankCreditChecked = false;
+    bool amountMatchedChecked = false;
+    bool vpaChecked = false;
+    bool duplicateChecked = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final allChecked = bankCreditChecked &&
+              amountMatchedChecked &&
+              vpaChecked &&
+              duplicateChecked;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.verified_user_outlined, color: Colors.amber.shade900),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Step 5: Bank Reconciliation Gate',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Match UTR in Live Bank Statement before Approval',
+                        style: TextStyle(fontSize: 11, color: Colors.black54),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'DO NOT approve based on screenshot alone. Screenshots can be fabricated. Money must be verified in your NetBanking or UPI Business app.',
+                              style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.champagne.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.lightBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('UTR NUMBER TO SEARCH IN BANK:', style: TextStyle(fontSize: 11, color: Colors.black54)),
+                                const SizedBox(height: 4),
+                                SelectableText(
+                                  item.utrNumber,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    fontFamily: 'monospace',
+                                    color: AppColors.deepPlum,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Amount: ₹${item.detectedAmount.toStringAsFixed(0)} | Client: ${item.customerName}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.deepPlum,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                            icon: const Icon(Icons.copy, size: 14),
+                            label: const Text('Copy UTR', style: TextStyle(fontSize: 12)),
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: item.utrNumber));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Copied UTR ${item.utrNumber} to clipboard! Search in NetBanking.'),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Accountant Audit Checklist:',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: bankCreditChecked,
+                      title: const Text('1. UTR matched in Bank Statement / UPI Merchant App', style: TextStyle(fontSize: 13)),
+                      subtitle: const Text('Found matching 12-digit transaction ID in HDFC / ICICI / SBI / Axis / PhonePe Business.', style: TextStyle(fontSize: 11)),
+                      onChanged: (val) => setDialogState(() => bankCreditChecked = val ?? false),
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: amountMatchedChecked,
+                      title: Text('2. Credited Amount is exact ₹${item.detectedAmount.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13)),
+                      subtitle: const Text('Exact deposit credit received with zero deduction.', style: TextStyle(fontSize: 11)),
+                      onChanged: (val) => setDialogState(() => amountMatchedChecked = val ?? false),
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: vpaChecked,
+                      title: const Text('3. Studio Payee Account Confirmed', style: TextStyle(fontSize: 13)),
+                      subtitle: const Text('Credit arrived in Makeovers by Prachi registered account/VPA.', style: TextStyle(fontSize: 11)),
+                      onChanged: (val) => setDialogState(() => vpaChecked = val ?? false),
+                    ),
+                    CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: duplicateChecked,
+                      title: const Text('4. Zero Duplicate Claim Verified', style: TextStyle(fontSize: 13)),
+                      subtitle: const Text('This UTR has not been credited or submitted against any other booking.', style: TextStyle(fontSize: 11)),
+                      onChanged: (val) => setDialogState(() => duplicateChecked = val ?? false),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: allChecked ? Colors.green.shade800 : Colors.grey.shade400,
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.lock_clock, size: 16),
+                label: const Text('Certify Bank Credit & Lock Booking'),
+                onPressed: allChecked
+                    ? () {
+                        Navigator.pop(ctx);
+                        _approvePayment(item);
+                      }
+                    : null,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _approvePayment(PaymentSubmissionItem item) async {
     setState(() {
       item.paymentStatus = 'VERIFIED';
@@ -811,11 +1006,11 @@ class _AdminPaymentVerificationScreenState
                               backgroundColor: Colors.green.shade800,
                               foregroundColor: Colors.white,
                             ),
-                            icon: const Icon(Icons.check_circle, size: 16),
-                            label: const Text('Approve & Lock'),
+                            icon: const Icon(Icons.verified_user_outlined, size: 16),
+                            label: const Text('Verify in Bank & Lock'),
                             onPressed: () {
                               Navigator.pop(context);
-                              _approvePayment(item);
+                              _promptStep5BankReconciliation(item);
                             },
                           ),
                         ],
@@ -1063,9 +1258,9 @@ class _AdminPaymentVerificationScreenState
               ),
               if (item.paymentStatus != 'VERIFIED')
                 ElevatedButton.icon(
-                  onPressed: () => _approvePayment(item),
-                  icon: const Icon(Icons.check_circle_outline, size: 16),
-                  label: const Text('Approve & Lock Calendar'),
+                  onPressed: () => _promptStep5BankReconciliation(item),
+                  icon: const Icon(Icons.verified_user_outlined, size: 16),
+                  label: const Text('Verify in Bank & Lock'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade800,
                     foregroundColor: Colors.white,

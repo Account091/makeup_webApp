@@ -7,26 +7,54 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function studioOrgId() {
+      return 'makeovers_by_prachi';
+    }
+
+    function isStudioAdmin() {
       return isAuthenticated() && (
-        request.auth.token.role == 'admin' || 
-        request.auth.token.role == 'owner'
+        request.auth.token.role == 'super_admin' ||
+        ((request.auth.token.role == 'admin' || request.auth.token.role == 'owner') && 
+         hasOrgId() && request.auth.token.orgId == studioOrgId())
       );
+    }
+
+    function isAdmin() {
+      return isStudioAdmin();
     }
 
     function isAccountant() {
       return isAuthenticated() && (
-        request.auth.token.role == 'accountant' ||
+        (request.auth.token.role == 'accountant' && hasOrgId() && request.auth.token.orgId == studioOrgId()) ||
         isAdmin()
       );
     }
 
+    function hasOrgId() {
+      return isAuthenticated() && request.auth.token.orgId != null;
+    }
+
+    function isPlatformSuperAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'super_admin';
+    }
+
+    function isOrgAdmin(targetOrgId) {
+      return hasOrgId() && 
+        (request.auth.token.role == 'admin' || request.auth.token.role == 'owner') && 
+        request.auth.token.orgId == targetOrgId;
+    }
+
     // 1. Bookings Collection Security
+    // Client direct writes are strictly disabled to eliminate pricing tampering and spam.
+    // All inquiries and bookings must originate via authenticated server APIs / Cloud Functions with App Check.
     match /bookings/{bookingId} {
-      allow read: if isAccountant() || (isAuthenticated() && resource.data.customerDetails.email == request.auth.token.email);
-      // Clients can only submit inquiries with AwaitingApproval status and depositPaid = 0
-      allow create: if request.resource.data.status == 'awaitingApproval'
-                    && request.resource.data.commercials.depositPaid == 0;
+      allow read: if isAccountant() || (isAuthenticated() && (
+        resource.data.customerDetails.email == request.auth.token.email ||
+        resource.data.customerDetails.phone == request.auth.token.phone_number ||
+        resource.data.orgId == request.auth.token.orgId
+      ));
+      // Direct client creation disabled; handled exclusively via Server Admin SDK
+      allow create: if isAdmin();
       // Updates are strictly admin-controlled or handled via Cloud Functions Admin SDK
       allow update: if isAdmin();
       allow delete: if isAdmin();
@@ -369,6 +397,44 @@ service cloud.firestore {
     match /artistScorecards/{id} {
       allow read: if isAuthenticated();
       allow write: if false;
+    }
+
+    // 28. Grounded Knowledge Base & AI Safety Rules
+    // Admin writes are strictly server-side (Admin SDK) to enforce staged publishing & vector indexing.
+    match /knowledgeEntries/{id} {
+      allow read: if isPlatformSuperAdmin() || isOrgAdmin(resource.data.orgId);
+      allow write: if false; // All mutations handled via server Admin SDK
+
+      match /versions/{v} {
+        allow read: if isPlatformSuperAdmin() || isOrgAdmin(get(/databases/$(database)/documents/knowledgeEntries/$(id)).data.orgId);
+        allow write: if false;
+      }
+    }
+
+    // Chunks are accessed exclusively by server retrieval logic; clients cannot read or write directly.
+    match /knowledgeChunks/{id} {
+      allow read, write: if false;
+    }
+
+    // Question logs contain scrubbed questions; restricted to org admins or platform super-admins.
+    match /aiQuestionLog/{id} {
+      allow read: if isPlatformSuperAdmin() || isOrgAdmin(resource.data.orgId);
+      allow write: if false;
+    }
+
+    // Regression test suite questions are server-managed.
+    match /aiTestQuestions/{id} {
+      allow read, write: if false;
+    }
+
+    // Distributed serverless knowledge cache (TTL managed)
+    match /knowledgeCache/{id} {
+      allow read, write: if false;
+    }
+
+    // Sharded rate-limit counters
+    match /aiRateLimits/{id} {
+      allow read, write: if false;
     }
   }
 }

@@ -20,6 +20,11 @@ node_modules/
 out/
 dist/
 
+# Environment files
+.env*
+**/.env*
+*.env.local
+
 # IntelliJ related
 *.iml
 *.ipr

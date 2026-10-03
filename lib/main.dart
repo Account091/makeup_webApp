@@ -29,6 +29,9 @@ import 'presentation/features/whatsapp_automation/views/whatsapp_dashboard_scree
 import 'presentation/features/customer_website/views/customer_home_screen.dart';
 import 'presentation/features/auth/views/auth_screen.dart';
 import 'presentation/features/payment/views/admin_payment_verification_screen.dart';
+import 'presentation/features/crm/views/customer_360_screen.dart';
+import 'presentation/features/finance/views/financial_dashboard_screen.dart';
+import 'presentation/features/team/views/artist_dispatch_board_screen.dart';
 
 import 'core/services/firebase_messaging_service.dart';
 
@@ -121,6 +124,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     BookingInquiryScreen(), // 10
     AuthScreen(), // 11
     AdminPaymentVerificationScreen(), // 12
+    Customer360Screen(), // 13
+    FinancialDashboardScreen(), // 14
+    ArtistDispatchBoardScreen(), // 15
   ];
 
   static const Map<int, String> _screenTitles = {
@@ -137,6 +143,9 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     10: 'Book Date Inquiries Wizard',
     11: 'Firebase Auth & Security Admin',
     12: 'UPI Payment Verification Queue',
+    13: 'Booking 360 & Client Dossier',
+    14: 'Financial Dashboard & Tax Filing',
+    15: 'Artist Dispatch & Backup Board',
   };
 
   @override
@@ -174,10 +183,21 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                           Icons.calendar_month_outlined,
                         ),
                         _buildSidebarItem(
+                          15,
+                          'Artist Dispatch Board',
+                          Icons.local_shipping_outlined,
+                          badge: 'Live',
+                        ),
+                        _buildSidebarItem(
                           12,
                           'Payment Queue',
                           Icons.verified_user_outlined,
                           badge: 'UPI',
+                        ),
+                        _buildSidebarItem(
+                          14,
+                          'Finance & GST Ledger',
+                          Icons.account_balance_wallet_outlined,
                         ),
 
                         const SizedBox(height: 12),
@@ -186,6 +206,12 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                           3,
                           'Customer CRM',
                           Icons.people_alt_outlined,
+                        ),
+                        _buildSidebarItem(
+                          13,
+                          'Booking 360 Dossier',
+                          Icons.badge_outlined,
+                          badge: '360°',
                         ),
                         _buildSidebarItem(
                           8,
@@ -367,13 +393,24 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
                 Icons.calendar_month_outlined,
               ),
               _buildDrawerItem(
+                15,
+                'Artist Dispatch Board',
+                Icons.local_shipping_outlined,
+              ),
+              _buildDrawerItem(
                 12,
                 'Payment Queue',
                 Icons.verified_user_outlined,
               ),
+              _buildDrawerItem(
+                14,
+                'Finance & GST Ledger',
+                Icons.account_balance_wallet_outlined,
+              ),
 
               _buildMobileDrawerSection('CLIENTS & BOOKINGS'),
               _buildDrawerItem(3, 'Customer CRM', Icons.people_alt_outlined),
+              _buildDrawerItem(13, 'Booking 360 Dossier', Icons.badge_outlined),
               _buildDrawerItem(
                 8,
                 'Track Booking Status',

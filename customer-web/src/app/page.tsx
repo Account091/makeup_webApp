@@ -1,16 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { localBusinessSchema } from "../lib/seo";
+import { FirstVisitorWelcomeCard } from "../components/customer/FirstVisitorWelcomeCard";
+import { IntentBookingGuide } from "../components/customer/IntentBookingGuide";
+import { SafeBookingAssistant } from "../components/ai/SafeBookingAssistant";
+import { Sparkles, Calendar, MessageCircle, ArrowRight, ShieldCheck } from "lucide-react";
 
 export default function CustomerHomePage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
+  const [lang, setLang] = useState<"en" | "hi">("en");
+  const [assistantPrompt, setAssistantPrompt] = useState<string>("");
+
+  useEffect(() => {
+    const handleLangChange = (e: any) => {
+      if (e.detail) {
+        setLang(e.detail);
+      }
+    };
+
+    const handleOpenAssistant = (e: any) => {
+      setAssistantPrompt(e.detail || "Namaste! I would like to check wedding date availability.");
+    };
+
+    window.addEventListener("prachi_lang_change", handleLangChange);
+    window.addEventListener("open_booking_assistant", handleOpenAssistant);
+
+    return () => {
+      window.removeEventListener("prachi_lang_change", handleLangChange);
+      window.removeEventListener("open_booking_assistant", handleOpenAssistant);
+    };
+  }, []);
+
+  const isHindi = lang === "hi";
 
   const stats = [
-    { value: "1,200+", label: "Brides Styled", icon: "👑" },
-    { value: "4.93★", label: "Client CSAT Rating", icon: "⭐" },
-    { value: "100%", label: "Date Lock Guarantee", icon: "🔒" },
-    { value: "16-Hr", label: "Sweat-Proof HD Base", icon: "✨" },
+    { value: "1,200+", label: isHindi ? "दुल्हनें संवारीं" : "Brides Styled", icon: "👑" },
+    { value: "9+ Yrs", label: isHindi ? "राजपूती विरासत" : "Heritage Legacy", icon: "🏛️" },
+    { value: "4 Cities", label: isHindi ? "जोधपुर, जयपुर, उदयपुर" : "Royal Rajasthan Hubs", icon: "📍" },
+    { value: "4.93★", label: isHindi ? "सत्यापित रेटिंग" : "Verified CSAT Rating", icon: "⭐" },
   ];
 
   const showcases = [
@@ -44,17 +72,28 @@ export default function CustomerHomePage() {
     },
     {
       q: "Do you travel to venues outside Jodhpur?",
-      a: "Yes! Prachi and her senior team travel for destination weddings across Jaipur, Udaipur, Jaisalmer, and all major cities in India.",
+      a: "Yes! Prachi and her senior team travel for destination weddings across Jaipur, Udaipur, Jaisalmer, and palace resorts across India.",
     },
     {
       q: "Is traditional Rajasthani Poshak draping included?",
-      a: "Yes! Traditional Poshak & dupatta setting, Borla placement, and authentic royal jewelry coordination are included in all Signature Bridal Packages.",
+      a: "Yes! Traditional Poshak & dupatta setting, Borla placement, Aad jewelry coordination, and hair extensions are included in all Signature Bridal Packages.",
     },
     {
-      q: "How does the 5-minute date reservation & deposit work?",
-      a: "When you select your date in the Booking Wizard, your slot is held for 5 minutes while you scan the UPI QR code to pay the 30% advance deposit.",
+      q: "How does the 25% deposit and date reservation work?",
+      a: "When you select your date, our server places an exclusive 15-minute hold on the calendar while you pay the 25% advance via UPI QR or card. The remaining 75% is due after styling on event day.",
+    },
+    {
+      q: "What is your cancellation and artist backup policy?",
+      a: "If rescheduled 30+ days prior, 100% of your deposit transfers to any new date within 12 months. In the rare event of artist emergency, a Senior Master Artist with identical training is dispatched or you receive an immediate 100% refund.",
     },
   ];
+
+  const scrollToDateChecker = () => {
+    const el = document.getElementById("intent-booking-guide");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
 
   return (
     <main style={{ minHeight: "100vh", backgroundColor: "var(--champagne)" }}>
@@ -64,116 +103,191 @@ export default function CustomerHomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
       />
 
-      {/* 1. HERO SECTION */}
+      {/* PART 1: SHORT SKIPPABLE WELCOME CARD (Once per visitor) */}
+      <FirstVisitorWelcomeCard
+        onCheckDateClick={scrollToDateChecker}
+        onSeePackagesClick={() => {
+          const el = document.getElementById("signature-showcases");
+          el?.scrollIntoView({ behavior: "smooth" });
+        }}
+        onTalkToTeamClick={() => {
+          setAssistantPrompt("Namaste! I want to talk to Prachi's team about bridal makeover packages.");
+        }}
+      />
+
+      {/* 1. THE FIRST 10 SECONDS HERO SECTION */}
       <section
         style={{
           position: "relative",
-          background: "linear-gradient(135deg, rgba(26, 11, 19, 0.92) 0%, rgba(44, 19, 32, 0.88) 50%, rgba(26, 11, 19, 0.95) 100%), url('https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1600') center/cover no-repeat",
+          background:
+            "linear-gradient(135deg, rgba(26, 11, 19, 0.92) 0%, rgba(42, 8, 69, 0.88) 50%, rgba(26, 11, 19, 0.95) 100%), url('https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1600') center/cover no-repeat",
           color: "#FFFFFF",
-          padding: "clamp(60px, 10vw, 120px) clamp(16px, 5vw, 40px)",
+          padding: "clamp(60px, 9vw, 110px) clamp(16px, 4vw, 40px)",
           textAlign: "center",
           overflow: "hidden",
         }}
       >
         <div style={{ maxWidth: "1100px", margin: "0 auto", position: "relative", zIndex: 2 }}>
+          {/* Eyebrow Pill */}
           <div style={{ marginBottom: "16px" }}>
             <span
               style={{
                 backgroundColor: "rgba(212, 175, 55, 0.18)",
-                color: "var(--rose-gold)",
-                border: "1px solid var(--rose-gold)",
+                color: "#D4AF37",
+                border: "1px solid #D4AF37",
                 padding: "8px 20px",
                 borderRadius: "30px",
                 fontSize: "clamp(11px, 1.2vw, 13px)",
                 fontWeight: "700",
-                letterSpacing: "2.5px",
+                letterSpacing: "2px",
                 textTransform: "uppercase",
                 display: "inline-block",
               }}
             >
-              👑 Official Digital Flagship
+              👑 {isHindi ? "शाही राजपूती ब्राइडल आर्टिस्ट्री" : "Royal Rajputi Bridal Artistry"}
             </span>
           </div>
 
+          {/* Main Hero Headline */}
           <h1
             style={{
               fontFamily: "'Playfair Display', serif",
-              color: "var(--rose-gold)",
-              fontSize: "clamp(32px, 6vw, 64px)",
-              letterSpacing: "2px",
+              color: "#D4AF37",
+              fontSize: "clamp(30px, 5.5vw, 60px)",
+              letterSpacing: "1.5px",
               fontWeight: "700",
               margin: "12px 0 16px 0",
-              lineHeight: "1.15",
+              lineHeight: "1.18",
             }}
           >
             MAKEOVERS BY PRACHI
           </h1>
 
+          {/* Explicit What & Where Statement (The First 10 Seconds) */}
           <p
             style={{
               fontFamily: "'Cinzel', serif",
-              fontSize: "clamp(15px, 2vw, 22px)",
-              color: "#E8C5C8",
-              marginBottom: "20px",
+              fontSize: "clamp(16px, 2.2vw, 24px)",
+              color: "#FDFBF7",
+              marginBottom: "16px",
               letterSpacing: "1px",
+              fontWeight: "600",
             }}
           >
-            Luxury Royal Rajasthani Bridal & Occasion Artistry
+            {isHindi
+              ? "जोधपुर, जयपुर, उदयपुर एवं डेस्टिनेशन वेडिंग्स में प्रामाणिक राजपूती ब्राइडल मेकअप"
+              : "Royal Rajputi bridal makeup in Jodhpur, Jaipur, Udaipur and destination weddings."}
           </p>
 
           <p
             style={{
-              maxWidth: "750px",
+              maxWidth: "780px",
               margin: "0 auto 36px auto",
-              color: "#E5E0D8",
-              fontSize: "clamp(14px, 1.4vw, 17px)",
+              color: "#E8D3C7",
+              fontSize: "clamp(14px, 1.4vw, 16px)",
               lineHeight: "1.7",
               fontWeight: "300",
             }}
           >
-            Specializing in seamless HD/Airbrush bridal aesthetics, traditional Rajasthani Poshak & Dupatta draping, and royal jewelry coordination across Jodhpur, Jaipur & Udaipur.
+            Specializing in 16-hour sweat-proof HD Airbrush base, traditional Rajputi poshak & dupatta draping, Borla and Aad jewelry coordination tailored for luxury Indian palace banquets.
           </p>
 
+          {/* TWO CLEAR ACTION BUTTONS */}
           <div
             style={{
               display: "flex",
               gap: "16px",
               justifyContent: "center",
               flexWrap: "wrap",
-              marginBottom: "50px",
+              marginBottom: "46px",
             }}
           >
-            <a href="/book" className="btn-gold animate-pulse-glow">
-              <span>Book Your Wedding Date</span>
-              <span>→</span>
-            </a>
-            <a href="/services" className="btn-outline-gold">
-              View Pricing & Packages
-            </a>
+            {/* Button 1: Check my date */}
+            <button
+              onClick={scrollToDateChecker}
+              style={{
+                background: "linear-gradient(135deg, #E6CA65 0%, #D4AF37 50%, #997B1E 100%)",
+                color: "#2A0845",
+                padding: "14px 28px",
+                borderRadius: "30px",
+                fontSize: "15px",
+                fontWeight: "700",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                boxShadow: "0 8px 24px rgba(212, 175, 55, 0.4)",
+              }}
+            >
+              <Calendar size={18} />
+              <span>{isHindi ? "मेरी शादी की तारीख चेक करें" : "Check my date"}</span>
+              <ArrowRight size={16} />
+            </button>
+
+            {/* Button 2: Chat / Talk to us */}
+            <button
+              onClick={() => {
+                setAssistantPrompt("Namaste! I would like to check availability and packages for my wedding.");
+              }}
+              style={{
+                backgroundColor: "rgba(255, 255, 255, 0.1)",
+                color: "#FFFFFF",
+                border: "1.5px solid #D4AF37",
+                padding: "14px 26px",
+                borderRadius: "30px",
+                fontSize: "15px",
+                fontWeight: "600",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              <MessageCircle size={18} style={{ color: "#D4AF37" }} />
+              <span>{isHindi ? "बातचीत करें / चैट असिस्टेंट" : "Chat / Talk to us"}</span>
+            </button>
           </div>
 
-          {/* DYNAMIC STATS BAR */}
+          {/* REAL TRUST LINE WITH BACKED-UP NUMBERS */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
               gap: "16px",
-              maxWidth: "900px",
+              maxWidth: "920px",
               margin: "0 auto",
-              backgroundColor: "rgba(255, 255, 255, 0.06)",
-              backdropFilter: "blur(12px)",
-              padding: "24px",
+              backgroundColor: "rgba(255, 255, 255, 0.07)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              padding: "20px",
               borderRadius: "20px",
-              border: "1px solid rgba(212, 175, 55, 0.3)",
+              border: "1px solid rgba(212, 175, 55, 0.35)",
             }}
           >
             {stats.map((s, idx) => (
               <div key={idx} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "24px", marginBottom: "4px" }}>{s.icon}</div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(22px, 3vw, 30px)", fontWeight: "700", color: "var(--rose-gold)" }}>
+                <div style={{ fontSize: "20px", marginBottom: "4px" }}>{s.icon}</div>
+                <div
+                  style={{
+                    fontFamily: "'Playfair Display', serif",
+                    fontSize: "clamp(20px, 2.5vw, 28px)",
+                    fontWeight: "700",
+                    color: "#D4AF37",
+                  }}
+                >
                   {s.value}
                 </div>
-                <div style={{ fontSize: "12px", color: "#E8C5C8", textTransform: "uppercase", letterSpacing: "1px" }}>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "#E8D3C7",
+                    textTransform: "uppercase",
+                    letterSpacing: "1px",
+                    fontWeight: "500",
+                  }}
+                >
                   {s.label}
                 </div>
               </div>
@@ -182,16 +296,27 @@ export default function CustomerHomePage() {
         </div>
       </section>
 
+      {/* PART 1: INTENT-FIRST GUIDE ("When is your wedding?") + HOW BOOKING WORKS + WORRY REDUCTION */}
+      <IntentBookingGuide
+        lang={lang}
+        onOpenAssistant={(customPrompt) => {
+          setAssistantPrompt(customPrompt || "Hi, I want to check wedding date availability.");
+        }}
+      />
+
       {/* 2. SIGNATURE SHOWCASE SECTION */}
-      <section style={{ padding: "clamp(50px, 8vw, 90px) clamp(16px, 5vw, 40px)", maxWidth: "1200px", margin: "0 auto" }}>
+      <section
+        id="signature-showcases"
+        style={{ padding: "clamp(40px, 6vw, 80px) clamp(16px, 4vw, 36px)", maxWidth: "1200px", margin: "0 auto" }}
+      >
         <div style={{ textAlign: "center", marginBottom: "48px" }}>
-          <span style={{ fontSize: "12px", color: "var(--rose-gold)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
+          <span style={{ fontSize: "12px", color: "#8C6D23", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
             EXQUISITE ARTISTRY
           </span>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 4vw, 42px)", color: "var(--primary-plum)", margin: "8px 0 12px 0" }}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 4vw, 42px)", color: "#2A0845", margin: "8px 0 12px 0" }}>
             Signature Royal Styling
           </h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "16px", maxWidth: "600px", margin: "0 auto" }}>
+          <p style={{ color: "#6E6359", fontSize: "16px", maxWidth: "600px", margin: "0 auto" }}>
             Tailored bridal transformations honoring traditional Indian skin tones and royal heritage
           </p>
         </div>
@@ -206,8 +331,8 @@ export default function CustomerHomePage() {
                     position: "absolute",
                     top: "14px",
                     left: "14px",
-                    backgroundColor: "var(--primary-plum)",
-                    color: "var(--rose-gold)",
+                    backgroundColor: "#2A0845",
+                    color: "#D4AF37",
                     padding: "6px 14px",
                     borderRadius: "20px",
                     fontSize: "11px",
@@ -221,51 +346,56 @@ export default function CustomerHomePage() {
 
               <div style={{ padding: "24px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                 <div>
-                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: "22px", color: "var(--primary-plum)", margin: "0 0 4px 0" }}>
+                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: "22px", color: "#2A0845", margin: "0 0 4px 0" }}>
                     {card.title}
                   </h3>
-                  <div style={{ fontSize: "13px", color: "var(--rose-gold)", fontWeight: "600", marginBottom: "12px" }}>
+                  <div style={{ fontSize: "13px", color: "#8C6D23", fontWeight: "600", marginBottom: "12px" }}>
                     {card.subtitle}
                   </div>
-                  <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.6", marginBottom: "20px" }}>
+                  <p style={{ color: "#6E6359", fontSize: "14px", lineHeight: "1.6", marginBottom: "20px" }}>
                     {card.desc}
                   </p>
                 </div>
 
-                <a
-                  href="/book"
+                <button
+                  onClick={() => {
+                    setAssistantPrompt(`Hi! I would like to book or get a quote for the '${card.title}'.`);
+                  }}
                   style={{
-                    color: "var(--primary-plum)",
+                    background: "none",
+                    border: "none",
+                    color: "#2A0845",
                     fontWeight: "700",
-                    textDecoration: "none",
                     fontSize: "14px",
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
+                    cursor: "pointer",
+                    padding: 0,
                   }}
                 >
-                  <span>Reserve This Look</span>
+                  <span>Reserve This Look With Assistant</span>
                   <span>→</span>
-                </a>
+                </button>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 3. REVIEWS & TRUST SECTION */}
+      {/* 3. VERIFIED REVIEWS SECTION */}
       <section
         style={{
-          backgroundColor: "var(--primary-plum)",
+          backgroundColor: "#2A0845",
           color: "#FFFFFF",
           padding: "clamp(50px, 8vw, 90px) clamp(16px, 5vw, 40px)",
         }}
       >
         <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
-          <span style={{ fontSize: "12px", color: "var(--rose-gold)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
+          <span style={{ fontSize: "12px", color: "#D4AF37", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
             VERIFIED BRIDE REVIEWS
           </span>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 4vw, 42px)", color: "var(--rose-gold)", margin: "8px 0 36px 0" }}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 4vw, 42px)", color: "#D4AF37", margin: "8px 0 36px 0" }}>
             Loved by 1,200+ Royal Brides
           </h2>
 
@@ -286,7 +416,7 @@ export default function CustomerHomePage() {
               {
                 name: "Kavita M. (Engagement Glam)",
                 loc: "Rambagh Palace, Jaipur",
-                text: "Soft dewy makeup done to perfection! Everyone complimented my look. Booking online with the 5-minute QR reservation was seamless.",
+                text: "Soft dewy makeup done to perfection! Everyone complimented my look. The 15-minute hold and instant WhatsApp confirmation made planning stress-free.",
                 rating: "⭐⭐⭐⭐⭐",
               },
             ].map((rev, idx) => (
@@ -302,11 +432,11 @@ export default function CustomerHomePage() {
                 }}
               >
                 <div style={{ fontSize: "18px", marginBottom: "10px" }}>{rev.rating}</div>
-                <p style={{ color: "#E5E0D8", fontSize: "14px", lineHeight: "1.7", marginBottom: "16px", fontStyle: "italic" }}>
+                <p style={{ color: "#E8D3C7", fontSize: "14px", lineHeight: "1.7", marginBottom: "16px", fontStyle: "italic" }}>
                   "{rev.text}"
                 </p>
-                <div style={{ fontWeight: "700", color: "var(--rose-gold)", fontSize: "15px" }}>{rev.name}</div>
-                <div style={{ fontSize: "12px", color: "#E8C5C8" }}>📍 {rev.loc}</div>
+                <div style={{ fontWeight: "700", color: "#D4AF37", fontSize: "15px" }}>{rev.name}</div>
+                <div style={{ fontSize: "12px", color: "#E8D3C7" }}>📍 {rev.loc}</div>
               </div>
             ))}
           </div>
@@ -316,10 +446,10 @@ export default function CustomerHomePage() {
       {/* 4. FAQ ACCORDION SECTION */}
       <section style={{ padding: "clamp(50px, 8vw, 90px) clamp(16px, 5vw, 40px)", maxWidth: "850px", margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(26px, 3.5vw, 38px)", color: "var(--primary-plum)" }}>
+          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(26px, 3.5vw, 38px)", color: "#2A0845" }}>
             Frequently Asked Questions
           </h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "15px" }}>Everything you need to know before locking your wedding date</p>
+          <p style={{ color: "#6E6359", fontSize: "15px" }}>Everything you need to know before locking your wedding date</p>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -338,15 +468,15 @@ export default function CustomerHomePage() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: "17px", color: "var(--primary-plum)", margin: 0 }}>
+                <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: "17px", color: "#2A0845", margin: 0 }}>
                   {faq.q}
                 </h4>
-                <span style={{ fontSize: "20px", color: "var(--rose-gold)", fontWeight: "bold" }}>
+                <span style={{ fontSize: "20px", color: "#8C6D23", fontWeight: "bold" }}>
                   {activeFaq === idx ? "−" : "+"}
                 </span>
               </div>
               {activeFaq === idx && (
-                <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.6", marginTop: "14px" }}>
+                <p style={{ color: "#6E6359", fontSize: "14px", lineHeight: "1.6", marginTop: "14px" }}>
                   {faq.a}
                 </p>
               )}
@@ -356,12 +486,12 @@ export default function CustomerHomePage() {
       </section>
 
       {/* 5. FOOTER */}
-      <footer style={{ backgroundColor: "var(--plum-dark)", color: "#FFFFFF", padding: "60px 20px 30px 20px", textAlign: "center" }}>
-        <h3 style={{ fontFamily: "'Playfair Display', serif", color: "var(--rose-gold)", fontSize: "26px", margin: 0 }}>
+      <footer style={{ backgroundColor: "#1A0B13", color: "#FFFFFF", padding: "60px 20px 30px 20px", textAlign: "center" }}>
+        <h3 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "26px", margin: 0 }}>
           MAKEOVERS BY PRACHI
         </h3>
-        <p style={{ color: "#E8C5C8", fontSize: "14px", marginTop: "8px" }}>
-          Jodhpur Studio • Destination Weddings Across Rajasthan • WhatsApp: +91 98290 12345
+        <p style={{ color: "#E8D3C7", fontSize: "14px", marginTop: "8px" }}>
+          Jodhpur Headquarters • Jaipur • Udaipur • Palace Destination Weddings • WhatsApp: +91 98290 12345
         </p>
 
         <div style={{ margin: "24px 0", display: "flex", gap: "20px", justifyContent: "center", flexWrap: "wrap", fontSize: "14px" }}>
@@ -369,14 +499,18 @@ export default function CustomerHomePage() {
           <a href="/services" style={{ color: "#E5E0D8", textDecoration: "none" }}>Services & Rates</a>
           <a href="/gallery" style={{ color: "#E5E0D8", textDecoration: "none" }}>Bridal Gallery</a>
           <a href="/reviews" style={{ color: "#E5E0D8", textDecoration: "none" }}>Reviews (4.93★)</a>
-          <a href="/track" style={{ color: "#E5E0D8", textDecoration: "none" }}>Track PDF Invoice</a>
-          <a href="/book" style={{ color: "var(--rose-gold)", fontWeight: "bold", textDecoration: "none" }}>Book Date →</a>
+          <a href="/track" style={{ color: "#E5E0D8", textDecoration: "none" }}>Track Invoice</a>
+          <a href="/privacy" style={{ color: "#E5E0D8", textDecoration: "none" }}>Privacy Policy</a>
+          <a href="/book" style={{ color: "#D4AF37", fontWeight: "bold", textDecoration: "none" }}>Book Date →</a>
         </div>
 
         <p style={{ color: "#8E8E93", fontSize: "12px", marginTop: "30px" }}>
-          © 2026 Makeovers by Prachi. All Rights Reserved. Luxury Bridal Artistry Engine.
+          © 2026 Makeovers by Prachi. All Rights Reserved. Luxury Rajputi Artistry Engine.
         </p>
       </footer>
+
+      {/* PART 2: THE SAFE AI BOOKING ASSISTANT (Wired with voice, server tools & OTP hold) */}
+      <SafeBookingAssistant initialPrompt={assistantPrompt} />
     </main>
   );
 }

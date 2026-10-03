@@ -77,7 +77,7 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
     final netProfit = totalRevenue - totalExpenses;
 
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         backgroundColor: AppPalette.backgroundDark,
         appBar: AppBar(
@@ -88,6 +88,18 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
           backgroundColor: AppPalette.surfaceDark,
           elevation: 0,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.file_download_outlined, color: AppPalette.textGold),
+              tooltip: 'Export CA GSTR-1 & Audit Spreadsheet',
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('📊 Exporting CA-Certified GSTR-1 & Audit Ledger (CSV/Excel)...'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.psychology, color: AppPalette.textGold),
               tooltip: 'Run AI Financial Analyst Synthesis',
@@ -108,8 +120,10 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
             indicatorColor: AppPalette.goldAccent,
             labelColor: AppPalette.textGold,
             unselectedLabelColor: AppPalette.textSecondary,
+            isScrollable: true,
             tabs: [
               Tab(text: 'P&L Overview'),
+              Tab(text: 'Aging Balances & Reminders'),
               Tab(text: 'Invoices & Ledger'),
               Tab(text: 'Expenses'),
               Tab(text: 'Compliance & Audit'),
@@ -119,6 +133,7 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
         body: TabBarView(
           children: [
             _buildProfitLossTab(totalRevenue, totalExpenses, netProfit),
+            _buildAgingBalancesTab(),
             _buildInvoicesLedgerTab(),
             _buildExpensesTab(),
             _buildComplianceAuditTab(),
@@ -574,6 +589,235 @@ class _FinancialDashboardScreenState extends State<FinancialDashboardScreen> {
               Text(hash, style: const TextStyle(color: Colors.white38, fontSize: 9)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAgingBalancesTab() {
+    final agingItems = [
+      {
+        'bride': 'Radhika Jodhpur (Royal Pheras)',
+        'bookingId': 'MBP-2026-X8K9',
+        'eventDate': '28 Nov 2026',
+        'total': '₹45,000',
+        'paid': '₹15,000',
+        'balance': '₹30,000',
+        'dueDate': '14 Nov 2026 (T-14 Days)',
+        'category': 'DUE_7_DAYS',
+        'phone': '+91 98290 12345',
+      },
+      {
+        'bride': 'Sneha Parekh (Destination Palace)',
+        'bookingId': 'MBP-2026-R4T1',
+        'eventDate': '05 Nov 2026',
+        'total': '₹65,000',
+        'paid': '₹20,000',
+        'balance': '₹45,000',
+        'dueDate': 'Tomorrow (T-48h)',
+        'category': 'DUE_48H',
+        'phone': '+91 94140 55667',
+      },
+      {
+        'bride': 'Meenakshi Rathore (Sangeet + Wedding)',
+        'bookingId': 'MBP-2026-W9Q2',
+        'eventDate': '20 Oct 2026',
+        'total': '₹55,000',
+        'paid': '₹25,000',
+        'balance': '₹30,000',
+        'dueDate': 'Overdue by 12 Days',
+        'category': 'OVERDUE',
+        'phone': '+91 98291 22334',
+      },
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Aging Summary Metrics
+        Row(
+          children: [
+            Expanded(
+              child: _buildAgingMetricCard('Total Outstanding', '₹1,05,000', Colors.white, 'Across 3 Active Bookings'),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildAgingMetricCard('Due in 7-14 Days', '₹30,000', Colors.lightGreenAccent, '1 Booking (On Track)'),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildAgingMetricCard('Due in 48 Hours', '₹45,000', Colors.amberAccent, '1 Booking (Urgent)'),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildAgingMetricCard('Critical Overdue', '₹30,000', Colors.redAccent, '1 Booking (>7 Days)'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Compliance Notice
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade900.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.gavel_outlined, color: Colors.amberAccent, size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Income Tax Compliance (Sec 269ST): Cash receipts of ₹2,00,000 or more per event are strictly blocked. Collect via UPI, Card, or NEFT/RTGS bank transfer.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        const Text(
+          'AGING UNPAID BALANCES ROSTER & 1-CLICK DISPATCH',
+          style: TextStyle(color: AppPalette.textSecondary, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+        ),
+        const SizedBox(height: 12),
+
+        ...agingItems.map((item) {
+          final isOverdue = item['category'] == 'OVERDUE';
+          final is48h = item['category'] == 'DUE_48H';
+          final badgeColor = isOverdue ? Colors.redAccent : is48h ? Colors.amberAccent : Colors.lightGreenAccent;
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppPalette.surfaceDark,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Status Icon Indicator
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isOverdue ? Icons.warning_amber_rounded : Icons.schedule,
+                    color: badgeColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            item['bride']!,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          const SizedBox(width: 8),
+                          Text('#${item['bookingId']}', style: const TextStyle(color: AppPalette.textGold, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Event Date: ${item['eventDate']} • Total: ${item['total']} • Advance Paid: ${item['paid']}',
+                        style: const TextStyle(color: AppPalette.textSecondary, fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text('Due: ${item['dueDate']}', style: TextStyle(color: badgeColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 12),
+                          Text('Phone: ${item['phone']}', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Outstanding Amount & Actions
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      item['balance']!,
+                      style: TextStyle(color: badgeColor, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.send, size: 14),
+                          label: const Text('WhatsApp Reminder', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('💬 WhatsApp Payment Reminder dispatched to ${item['bride']} with payment link.'),
+                                backgroundColor: const Color(0xFF25D366),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppPalette.textGold,
+                            side: const BorderSide(color: AppPalette.goldAccent),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Logging manual bank receipt for ${item['bookingId']}...')),
+                            );
+                          },
+                          child: const Text('Record Pay', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildAgingMetricCard(String title, String val, Color color, String sub) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppPalette.surfaceDark,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: AppPalette.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(val, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 2),
+          Text(sub, style: const TextStyle(color: Colors.white38, fontSize: 10)),
         ],
       ),
     );

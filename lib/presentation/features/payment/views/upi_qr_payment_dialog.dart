@@ -109,7 +109,6 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
     final currentUser = _authService.currentUser;
     final userEmail = currentUser?.email ?? 'guest_customer@makeoversbyprachi.com';
     final userName = currentUser?.displayName ?? 'Valued Bride / Client';
-    final userUid = currentUser?.uid ?? 'GUEST_${DateTime.now().millisecondsSinceEpoch}';
 
     // 1. Run Hugging Face Vision AI OCR Parsing
     final aiResult = await PaymentVisionAiService.analyzeUpiScreenshot(
@@ -122,27 +121,50 @@ class _UpiQrPaymentDialogState extends State<UpiQrPaymentDialog> {
     final storageProofUrl =
         'https://firebasestorage.googleapis.com/v0/b/tiktok1-d7d25.appspot.com/o/payment_proofs%2F$fileName?alt=media';
 
-    // 3. Construct Row Payload for Google Sheets (Image Link used instead of binary)
+    // Helper: Mask phone number (e.g. +91 98290 12345 -> +91 98XXXXX345)
+    String maskPhone(String phone) {
+      final digits = phone.replaceAll(RegExp(r'\D'), '');
+      if (digits.length >= 10) {
+        final prefix = digits.substring(0, digits.length >= 12 ? 4 : 2);
+        final suffix = digits.substring(digits.length - 3);
+        return '+$prefix XXXXX $suffix';
+      }
+      return 'XXXXX';
+    }
+
+    // Helper: Mask email (e.g. priya.sharma@gmail.com -> p***a@gmail.com)
+    String maskEmail(String email) {
+      if (!email.contains('@')) return '***';
+      final parts = email.split('@');
+      final name = parts[0];
+      final domain = parts[1];
+      if (name.length <= 2) return '${name[0]}***@$domain';
+      return '${name[0]}***${name[name.length - 1]}@$domain';
+    }
+
+    // 3. Construct Sanitized & Masked Row Payload for Google Sheets (DPDP 2023 Compliant)
+    // - No raw customer phone or email
+    // - No raw screenshot binary or public image URL (keeps images in private admin storage)
+    // - One-way audit logging only; decisions remain strictly inside the Admin App
     final excelPayload = {
       'timestamp': DateTime.now().toIso8601String(),
       'booking_id': widget.bookingId,
       'service_name': widget.serviceName,
-      'customer_name': userName,
-      'customer_phone': currentUser?.phoneNumber ?? '+91 98290 12345',
+      'customer_name_masked': userName.length > 2 ? '${userName[0]}***${userName[userName.length - 1]}' : userName,
+      'customer_phone_masked': maskPhone(currentUser?.phoneNumber ?? '+91 98290 12345'),
+      'payer_email_masked': userEmail.isNotEmpty ? maskEmail(userEmail) : 'N/A',
       'required_amount_inr': widget.amount,
       'detected_amount_inr': aiResult.detectedAmount,
       'utr_number': aiResult.utrNumber,
       'ai_status': aiResult.aiStatus,
       'ai_confidence': '${(aiResult.confidenceScore * 100).toStringAsFixed(1)}%',
       'payee_vpa': aiResult.payeeVpa,
-      'payer_email': userEmail,
-      'payer_uid': userUid,
-      'screenshot_link': storageProofUrl,
+      'admin_review_url': 'https://admin.makeoversbyprachi.com/bookings/${widget.bookingId}',
       'payment_status': 'VERIFICATION_PENDING',
-      'timer_remaining_sec': _secondsRemaining,
+      'audit_mode': 'ONE_WAY_REPORTING_ONLY',
     };
 
-    debugPrint('[Online Google Sheet Sync] Posting payload: $excelPayload');
+    debugPrint('[Online Google Sheet Sync] Posting sanitized payload: $excelPayload');
 
     // 4. Post to Google Sheet Webhook
     try {

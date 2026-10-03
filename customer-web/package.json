@@ -6,17 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:rules:emulator": "node scripts/test-rules-emulator.js",
+    "test:tenant:auth-emulator": "npx tsx scripts/test-tenant-isolation-auth-emulator.ts",
+    "test:staff:claims": "node scripts/set-staff-claims.js"
   },
   "dependencies": {
     "@huggingface/inference": "^4.13.28",
     "firebase": "^10.14.1",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^0.453.0",
     "next": "^14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@types/node": "^20.16.11",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",

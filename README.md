@@ -3,8 +3,9 @@
 An enterprise-grade, luxury bridal beauty ecosystem operating across **Customer Web** (Next.js 14), **Operations & Command Center** (Flutter Desktop & Mobile), and **Serverless Cloud Microservices** (Firebase Cloud Functions, Firestore, Storage, WhatsApp Cloud API, AI Gateway).
 
 📖 **Comprehensive Documentation**:
-For the complete architectural breakdown, UI/UX presentation specifications, data models, security guardrails, and feature catalog across all sides, please see:
-👉 [PLATFORM_MASTER_SPECIFICATION.md](PLATFORM_MASTER_SPECIFICATION.md)
+* Architectural & Functional Specification: 👉 [PLATFORM_MASTER_SPECIFICATION.md](PLATFORM_MASTER_SPECIFICATION.md)
+* Prioritized Feature Roadmap & Engineering Estimates: 👉 [PRODUCT_ROADMAP_AND_EFFORT_ESTIMATES.md](docs/PRODUCT_ROADMAP_AND_EFFORT_ESTIMATES.md)
+* Master Customer Experience Roadmap: 👉 [CUSTOMER_EXPERIENCE_MASTER_ROADMAP.md](docs/CUSTOMER_EXPERIENCE_MASTER_ROADMAP.md)
 
 ---
 
