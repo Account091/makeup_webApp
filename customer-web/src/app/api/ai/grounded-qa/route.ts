@@ -55,6 +55,8 @@ async function verifyAppCheckOrRecaptchaToken(token: string | null): Promise<{ v
 }
 
 export async function POST(req: Request) {
+  const startTime = Date.now();
+
   // Secure Client IP extraction: Prioritize host-controlled headers
   // - Vercel: 'x-real-ip' (host-guaranteed, cannot be spoofed by client)
   // - Cloudflare: 'cf-connecting-ip' (host-guaranteed edge IP)
