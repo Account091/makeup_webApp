@@ -17,36 +17,3 @@ class SubmitBookingInquiryEvent extends BookingEvent {
   @override
   List<Object?> get props => [booking];
 }
-
-class ApproveBookingEvent extends BookingEvent {
-  final String bookingId;
-  final double quoteAmount;
-  final double travelFee;
-  final double depositRequired;
-  final String? notes;
-
-  const ApproveBookingEvent({
-    required this.bookingId,
-    required this.quoteAmount,
-    required this.travelFee,
-    required this.depositRequired,
-    this.notes,
-  });
-
-  @override
-  List<Object?> get props =>
-      [bookingId, quoteAmount, travelFee, depositRequired, notes];
-}
-
-class DeclineBookingEvent extends BookingEvent {
-  final String bookingId;
-  final String reason;
-
-  const DeclineBookingEvent({
-    required this.bookingId,
-    required this.reason,
-  });
-
-  @override
-  List<Object?> get props => [bookingId, reason];
-}

@@ -3,7 +3,7 @@ export const localBusinessSchema = {
   "@type": "BeautySalon",
   "name": "Makeovers by Prachi",
   "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800",
-  "telephone": "+919829012345",
+  "telephone": "+919000000000",
   "email": "prachi@makeoversbyprachi.com",
   "address": {
     "@type": "PostalAddress",

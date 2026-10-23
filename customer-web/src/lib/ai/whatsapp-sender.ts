@@ -4,7 +4,7 @@
  */
 
 export interface SendWhatsAppParams {
-  toPhone: string; // Customer's WhatsApp phone number (e.g., "+919829012345")
+  toPhone: string; // Customer's WhatsApp phone number (e.g., "+919000000000")
   messageText: string;
   templateName?: string;
   templateLanguage?: string;
@@ -14,7 +14,7 @@ export async function sendWhatsAppMessageToCustomer(params: SendWhatsAppParams):
   const token = process.env.WHATSAPP_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "1249797228224448";
 
-  // Sanitize phone number to digits with country code (e.g. 919829012345)
+  // Sanitize phone number to digits with country code (e.g. 919000000000)
   let cleanPhone = params.toPhone.replace(/[^0-9]/g, "");
   if (cleanPhone.length === 10) {
     cleanPhone = `91${cleanPhone}`;

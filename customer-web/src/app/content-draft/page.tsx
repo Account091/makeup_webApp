@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Header from "../../components/Header";
 import { AiContentDrafter } from "../../components/ai/AiContentDrafter";
 
 export default function ContentDraftPage() {
@@ -17,7 +16,6 @@ export default function ContentDraftPage() {
         flexDirection: "column",
       }}
     >
-      <Header />
       <main
         style={{
           flex: 1,

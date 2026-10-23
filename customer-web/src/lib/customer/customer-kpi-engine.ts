@@ -24,7 +24,7 @@ export function calculateCustomerIntelligenceData(): ExecutiveCustomerDataPackag
     {
       customerId: "cust_priya_01",
       fullName: "Priya Sharma",
-      phone: "+919829012345",
+      phone: "+919000000000",
       email: "priya.sharma@example.com",
       city: "Jodhpur",
       segment: "BRIDAL",
@@ -154,7 +154,7 @@ export function calculateCustomerIntelligenceData(): ExecutiveCustomerDataPackag
       id: "pf_01",
       customerId: "cust_priya_01",
       customerName: "Priya Sharma",
-      customerPhone: "+919829012345",
+      customerPhone: "+919000000000",
       priority: "HIGH",
       leadScore: 92,
       inquiryTitle: "Royal Bridal Package (#bk_2026_101)",

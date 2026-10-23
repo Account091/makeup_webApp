@@ -417,9 +417,9 @@ export const SafeBookingAssistant: React.FC<SafeBookingAssistantProps> = ({
       }
     } catch (err) {
       console.error("AI Assistant Turn Error:", err);
-      addAssistantMessage("Connection glitch. You can directly chat with Prachi's studio team on WhatsApp at +91 98290 12345.", {
+      addAssistantMessage("Connection glitch. You can directly chat with Prachi's studio team on WhatsApp at +91 90000 00000.", {
         source: "Fail-safe WhatsApp Fallback",
-        chips: ["Open WhatsApp (+91 98290 12345)"],
+        chips: ["Open WhatsApp (+91 90000 00000)"],
       });
     } finally {
       setLoading(false);
@@ -485,7 +485,7 @@ export const SafeBookingAssistant: React.FC<SafeBookingAssistantProps> = ({
             source: "Verified Security Token",
             summaryCard: {
               clientName: bookingState.clientName || "Bride-to-be",
-              phone: bookingState.phone || "+91 98290 12345",
+              phone: bookingState.phone || "+91 90000 00000",
               eventDate: bookingState.eventDate || "2026-12-12",
               city: bookingState.city || "Jodhpur",
               packageName: q.packageName,
@@ -516,7 +516,7 @@ export const SafeBookingAssistant: React.FC<SafeBookingAssistantProps> = ({
           action: "create_provisional_hold",
           payload: {
             clientName: bookingState.clientName || "Bride-to-be",
-            phone: bookingState.phone || "+91 98290 12345",
+            phone: bookingState.phone || "+91 90000 00000",
             eventDate: bookingState.eventDate || "2026-12-12",
             city: bookingState.city || "Jodhpur",
             packageId: bookingState.packageId || "royal_rajputi_signature",
@@ -708,7 +708,7 @@ export const SafeBookingAssistant: React.FC<SafeBookingAssistantProps> = ({
             {/* Sub-bar: Always visible "Talk to a person" & Language Switcher */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px" }}>
               <a
-                href="https://wa.me/919829012345?text=Hi%20Prachi%2C%20I%20want%20to%20talk%20to%20a%20human%20about%20bridal%20makeup."
+                href={`https://wa.me/${process.env.NEXT_PUBLIC_STUDIO_WHATSAPP || ""}?text=Hi%20Prachi%2C%20I%20want%20to%20talk%20to%20a%20human%20about%20bridal%20makeup.`}
                 target="_blank"
                 rel="noreferrer"
                 style={{
@@ -1003,7 +1003,7 @@ export const SafeBookingAssistant: React.FC<SafeBookingAssistantProps> = ({
                         Open UPI App Directly
                       </a>
                       <a
-                        href={`https://wa.me/919829012345?text=I%20have%20initiated%20deposit%20for%20hold%20${m.paymentCard.bookingId}`}
+                        href={`https://wa.me/${process.env.NEXT_PUBLIC_STUDIO_WHATSAPP || ""}?text=I%20have%20initiated%20deposit%20for%20hold%20${m.paymentCard.bookingId}`}
                         target="_blank"
                         rel="noreferrer"
                         style={{

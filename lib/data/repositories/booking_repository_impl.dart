@@ -1,206 +1,44 @@
-import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/booking_entity.dart';
 import '../../domain/repositories/i_booking_repository.dart';
 import '../datasources/booking_remote_datasource.dart';
-import '../datasources/vercel_api_service.dart';
-import '../models/booking_model.dart';
 
+/// Legacy repository kept for parked screens. No mock data: failures surface
+/// to the caller.
 class BookingRepositoryImpl implements IBookingRepository {
-  final BookingRemoteDataSource? remoteDataSource;
-  final VercelApiService? vercelApiService;
-  final bool useMockData;
+  final BookingRemoteDataSource remoteDataSource;
+  final FirebaseFirestore? firestore;
 
-  BookingRepositoryImpl({
-    this.remoteDataSource,
-    this.vercelApiService,
-    this.useMockData = false,
-  });
-
-  final List<BookingEntity> _mockBookings = [
-    BookingEntity(
-      id: 'BK-2026-001',
-      customer: const CustomerDetails(
-        fullName: 'Priya Sharma',
-        phone: '+91 98290 12345',
-        email: 'priya.sharma@example.com',
-        instagramHandle: '@priya_bride',
-      ),
-      event: EventDetails(
-        eventType: 'Royal Bridal',
-        eventDate: DateTime.now().add(const Duration(days: 14)),
-        readyByTime: '16:00',
-        venueLocation: 'Gorbandh Palace, Jodhpur',
-        city: 'Jodhpur',
-        isOutstation: false,
-        distanceKm: 12.5,
-        guestCount: 1,
-      ),
-      serviceTitle: 'Signature Bridal Makeover',
-      packageName: 'Royal Rajasthani Poshak & Jewelry Package',
-      commercials: const CommercialDetails(
-        basePrice: 25000,
-        travelFee: 1500,
-        depositRequired: 7500,
-        depositPaid: 0,
-      ),
-      status: BookingStatus.awaitingApproval,
-      referenceImages: const [
-        'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800'
-      ],
-      notes: 'Wants heavy traditional eye makeup and poshak draping.',
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-    ),
-    BookingEntity(
-      id: 'BK-2026-002',
-      customer: const CustomerDetails(
-        fullName: 'Ananya Rathore',
-        phone: '+91 94140 67890',
-        email: 'ananya.r@example.com',
-        instagramHandle: '@ananya_rathore',
-      ),
-      event: EventDetails(
-        eventType: 'Pre-Wedding / Engagement',
-        eventDate: DateTime.now().add(const Duration(days: 7)),
-        readyByTime: '11:00',
-        venueLocation: 'Indana Palace, Jodhpur',
-        city: 'Jodhpur',
-        isOutstation: false,
-        distanceKm: 8.0,
-        guestCount: 2,
-      ),
-      serviceTitle: 'Pre-Wedding & Engagement Glam',
-      packageName: 'Soft Dewy Engagement Glam',
-      commercials: const CommercialDetails(
-        basePrice: 12000,
-        travelFee: 0,
-        depositRequired: 4000,
-        depositPaid: 4000,
-      ),
-      status: BookingStatus.confirmed,
-      notes: 'Soft dewy finish preferred.',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
+  BookingRepositoryImpl({required this.remoteDataSource, this.firestore});
 
   @override
-  Future<List<BookingEntity>> getBookings() async {
-    if (!useMockData && remoteDataSource != null) {
-      try {
-        final liveList = await remoteDataSource!.fetchBookings();
-        if (liveList.isNotEmpty) {
-          return liveList;
-        }
-      } catch (e) {
-        debugPrint('[BookingRepositoryImpl] Live fetch notice: $e');
-      }
-    }
-    await Future.delayed(const Duration(milliseconds: 300));
-    return List.unmodifiable(_mockBookings);
-  }
+  Future<List<BookingEntity>> getBookings() => remoteDataSource.fetchBookings();
 
   @override
   Future<BookingEntity?> getBookingById(String id) async {
     final bookings = await getBookings();
-    try {
-      return bookings.firstWhere((b) => b.id == id);
-    } catch (_) {
-      return null;
+    for (final b in bookings) {
+      if (b.id == id) return b;
     }
+    return null;
   }
 
   @override
-  Future<void> submitInquiry(BookingEntity booking) async {
-    if (!useMockData) {
-      try {
-        if (vercelApiService != null) {
-          final res = await vercelApiService!.createBookingSession(
-            fullName: booking.customer.fullName,
-            phone: booking.customer.phone,
-            email: booking.customer.email,
-            service: booking.serviceTitle,
-            packageType: booking.packageName ?? booking.serviceTitle,
-            date: booking.event.eventDate.toIso8601String().substring(0, 10),
-            readyTime: booking.event.readyByTime,
-            venue: booking.event.venueLocation,
-            city: booking.event.city,
-            guestCount: booking.event.guestCount,
-          );
-          if (res['success'] == true) {
-            debugPrint('[BookingRepositoryImpl] Live Vercel API booking created: ${res['bookingId']}');
-            return;
-          }
-        }
-        if (remoteDataSource != null) {
-          await remoteDataSource!.submitInquiry(BookingModel.fromEntity(booking));
-          return;
-        }
-      } catch (e) {
-        debugPrint('[BookingRepositoryImpl] submitInquiry live API notice: $e');
-      }
-    }
-    await Future.delayed(const Duration(milliseconds: 400));
-    _mockBookings.insert(0, booking);
-  }
-
-  @override
-  Future<void> approveBooking({
-    required String bookingId,
-    required double quoteAmount,
-    required double travelFee,
-    required double depositRequired,
-    String? notes,
-  }) async {
-    if (!useMockData && remoteDataSource != null) {
-      await remoteDataSource!.approveBooking(
-        bookingId: bookingId,
-        quoteAmount: quoteAmount,
-        travelFee: travelFee,
-        depositRequired: depositRequired,
-        notes: notes,
-      );
-      return;
-    }
-    await Future.delayed(const Duration(milliseconds: 400));
-    final index = _mockBookings.indexWhere((b) => b.id == bookingId);
-    if (index != -1) {
-      final existing = _mockBookings[index];
-      final updated = existing.copyWith(
-        status: BookingStatus.depositPending,
-        commercials: CommercialDetails(
-          basePrice: quoteAmount,
-          travelFee: travelFee,
-          depositRequired: depositRequired,
-          depositPaid: existing.commercials.depositPaid,
-        ),
-        notes: notes ?? existing.notes,
-      );
-      _mockBookings[index] = updated;
-    }
-  }
-
-  @override
-  Future<void> declineBooking(String bookingId, String reason) async {
-    if (!useMockData && remoteDataSource != null) {
-      await remoteDataSource!.declineBooking(bookingId, reason);
-      return;
-    }
-    await Future.delayed(const Duration(milliseconds: 300));
-    final index = _mockBookings.indexWhere((b) => b.id == bookingId);
-    if (index != -1) {
-      _mockBookings[index] = _mockBookings[index].copyWith(
-        status: BookingStatus.declined,
-        notes: 'Declined: $reason',
-      );
-    }
+  Future<void> submitInquiry(BookingEntity booking) {
+    throw UnsupportedError(
+      'Bookings are created on the website (POST /api/booking/create-session).',
+    );
   }
 
   @override
   Future<void> updateBookingStatus(
-      String bookingId, BookingStatus newStatus) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final index = _mockBookings.indexWhere((b) => b.id == bookingId);
-    if (index != -1) {
-      _mockBookings[index] = _mockBookings[index].copyWith(status: newStatus);
-    }
+    String bookingId,
+    BookingStatus newStatus,
+  ) async {
+    final db = firestore ?? FirebaseFirestore.instance;
+    await db.collection('bookings').doc(bookingId).update({
+      'status': newStatus.firestoreValue,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 }

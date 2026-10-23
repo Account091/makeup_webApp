@@ -22,7 +22,7 @@ import {
 } from "../../lib/ai/whatsapp-assistant-client";
 
 export const WhatsAppAssistantAdmin: React.FC = () => {
-  const [phoneInput, setPhoneInput] = useState("+91 9829012345");
+  const [phoneInput, setPhoneInput] = useState("+91 9000000000");
   const [messageInput, setMessageInput] = useState("Hi, what is my booking status?");
   const [mediaUrlInput, setMediaUrlInput] = useState("");
   const [aiEnabled, setAiEnabled] = useState(true);

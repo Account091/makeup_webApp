@@ -1,516 +1,291 @@
-"use client";
+import Link from "next/link";
+import React from "react";
+import { ArrowRight, BadgeCheck, MapPin, ShieldCheck, Sparkles } from "lucide-react";
+import AvailabilityChecker from "../components/site/AvailabilityChecker";
+import FadeImg from "../components/site/FadeImg";
+import ServiceCard from "../components/site/ServiceCard";
+import { getPublicConfig } from "../lib/booking/server";
+import { whatsappLink } from "../lib/booking/types";
+import { SITE_IMAGES } from "../lib/site-images";
 
-import React, { useState, useEffect } from "react";
-import { localBusinessSchema } from "../lib/seo";
-import { FirstVisitorWelcomeCard } from "../components/customer/FirstVisitorWelcomeCard";
-import { IntentBookingGuide } from "../components/customer/IntentBookingGuide";
-import { SafeBookingAssistant } from "../components/ai/SafeBookingAssistant";
-import { Sparkles, Calendar, MessageCircle, ArrowRight, ShieldCheck } from "lucide-react";
+const TRUST = [
+  { icon: Sparkles, title: "HD & airbrush", text: "Long-wear, camera-ready finishes" },
+  { icon: MapPin, title: "Travel across Rajasthan", text: "Jodhpur, Jaipur, Udaipur & beyond" },
+  { icon: ShieldCheck, title: "Secure UPI deposit", text: "Pay any UPI app, verified by us" },
+  { icon: BadgeCheck, title: "Instant booking ID", text: "Track your booking any time" },
+];
 
-export default function CustomerHomePage() {
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
-  const [lang, setLang] = useState<"en" | "hi">("en");
-  const [assistantPrompt, setAssistantPrompt] = useState<string>("");
+const STEPS = [
+  { title: "Pick your service & date", text: "Choose a package and see which dates are free. We take one bride per day." },
+  { title: "Pay a small deposit by UPI", text: "Scan the QR or open your UPI app, then upload the screenshot and UTR." },
+  { title: "Get confirmed", text: "We verify the payment and confirm your booking. Track it online any time." },
+];
 
-  useEffect(() => {
-    const handleLangChange = (e: any) => {
-      if (e.detail) {
-        setLang(e.detail);
-      }
-    };
+const APPROACH = [
+  { title: "A consultation first", text: "We talk through your outfit, jewellery, skin and the look you have in mind." },
+  { title: "Skin prep that lasts", text: "Long-wear HD or airbrush bases built for heat, tears and long ceremonies." },
+  { title: "Hair & draping included", text: "Bridal packages include hair styling and poshak, dupatta or saree draping." },
+];
 
-    const handleOpenAssistant = (e: any) => {
-      setAssistantPrompt(e.detail || "Namaste! I would like to check wedding date availability.");
-    };
+const CITIES = [
+  { href: "/jodhpur", name: "Jodhpur", note: "Our home studio", img: SITE_IMAGES.cities.jodhpur },
+  { href: "/jaipur", name: "Jaipur", note: "Weddings & events", img: SITE_IMAGES.cities.jaipur },
+  { href: "/udaipur", name: "Udaipur", note: "Lake-side & palace weddings", img: SITE_IMAGES.cities.udaipur },
+  { href: "/destination-weddings", name: "Destination", note: "Anywhere you celebrate", img: SITE_IMAGES.cities.destination },
+];
 
-    window.addEventListener("prachi_lang_change", handleLangChange);
-    window.addEventListener("open_booking_assistant", handleOpenAssistant);
-
-    return () => {
-      window.removeEventListener("prachi_lang_change", handleLangChange);
-      window.removeEventListener("open_booking_assistant", handleOpenAssistant);
-    };
-  }, []);
-
-  const isHindi = lang === "hi";
-
-  const stats = [
-    { value: "1,200+", label: isHindi ? "दुल्हनें संवारीं" : "Brides Styled", icon: "👑" },
-    { value: "9+ Yrs", label: isHindi ? "राजपूती विरासत" : "Heritage Legacy", icon: "🏛️" },
-    { value: "4 Cities", label: isHindi ? "जोधपुर, जयपुर, उदयपुर" : "Royal Rajasthan Hubs", icon: "📍" },
-    { value: "4.93★", label: isHindi ? "सत्यापित रेटिंग" : "Verified CSAT Rating", icon: "⭐" },
-  ];
-
-  const showcases = [
-    {
-      title: "Royal Rajasthani Poshak Look",
-      subtitle: "Jodhpur & Palace Weddings",
-      img: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800",
-      desc: "Traditional heavy Borla & Dupatta draping paired with 16-hour sweat-proof HD Airbrush base.",
-      tag: "SIGNATURE BRIDAL",
-    },
-    {
-      title: "Soft Dewy Engagement Glam",
-      subtitle: "Pre-Wedding & Ring Ceremonies",
-      img: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800",
-      desc: "Radiant glass-skin finish with customized soft textured waves for cocktail & sangeet nights.",
-      tag: "ENGAGEMENT",
-    },
-    {
-      title: "Destination Palace Bridal",
-      subtitle: "Jaipur, Udaipur & Rajasthan",
-      img: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800",
-      desc: "Full-day multi-event coverage with dedicated on-venue touch-up assistant station.",
-      tag: "DESTINATION",
-    },
-  ];
-
-  const faqs = [
-    {
-      q: "How far in advance should I book my wedding date?",
-      a: "We recommend locking your date 3 to 6 months in advance, especially for peak wedding season (October to March) in Rajasthan.",
-    },
-    {
-      q: "Do you travel to venues outside Jodhpur?",
-      a: "Yes! Prachi and her senior team travel for destination weddings across Jaipur, Udaipur, Jaisalmer, and palace resorts across India.",
-    },
-    {
-      q: "Is traditional Rajasthani Poshak draping included?",
-      a: "Yes! Traditional Poshak & dupatta setting, Borla placement, Aad jewelry coordination, and hair extensions are included in all Signature Bridal Packages.",
-    },
-    {
-      q: "How does the 25% deposit and date reservation work?",
-      a: "When you select your date, our server places an exclusive 15-minute hold on the calendar while you pay the 25% advance via UPI QR or card. The remaining 75% is due after styling on event day.",
-    },
-    {
-      q: "What is your cancellation and artist backup policy?",
-      a: "If rescheduled 30+ days prior, 100% of your deposit transfers to any new date within 12 months. In the rare event of artist emergency, a Senior Master Artist with identical training is dispatched or you receive an immediate 100% refund.",
-    },
-  ];
-
-  const scrollToDateChecker = () => {
-    const el = document.getElementById("intent-booking-guide");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+export default async function HomePage() {
+  const { services, settings } = await getPublicConfig();
+  const featured = services.slice(0, 3);
+  const wa = whatsappLink(settings.whatsappNumber, "Hi Prachi, I'd like to know more about bridal makeup.");
 
   return (
-    <main style={{ minHeight: "100vh", backgroundColor: "var(--champagne)" }}>
-      {/* JSON-LD LocalBusiness Schema */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
-      />
+    <main>
+      {/* ---------------- Hero ---------------- */}
+      <section className="relative isolate overflow-hidden bg-plum-dark text-white">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-10 bg-[radial-gradient(70%_60%_at_15%_20%,rgba(212,175,55,0.14),transparent_60%),radial-gradient(60%_60%_at_90%_90%,rgba(91,51,71,0.6),transparent_70%)]"
+        />
 
-      {/* PART 1: SHORT SKIPPABLE WELCOME CARD (Once per visitor) */}
-      <FirstVisitorWelcomeCard
-        onCheckDateClick={scrollToDateChecker}
-        onSeePackagesClick={() => {
-          const el = document.getElementById("signature-showcases");
-          el?.scrollIntoView({ behavior: "smooth" });
-        }}
-        onTalkToTeamClick={() => {
-          setAssistantPrompt("Namaste! I want to talk to Prachi's team about bridal makeover packages.");
-        }}
-      />
+        {/* Mobile: photo first, softly fading into the plum ground */}
+        <div className="relative h-[62vh] max-h-[560px] min-h-[420px] lg:hidden">
+          <FadeImg
+            src={SITE_IMAGES.hero}
+            alt="A bride in traditional jewellery with soft smoky eye makeup"
+            loading="eager"
+            sizes="100vw"
+            className="absolute inset-0 h-full w-full object-cover object-[50%_25%]"
+          />
+          <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-b from-plum-dark/60 via-transparent to-plum-dark" />
+        </div>
 
-      {/* 1. THE FIRST 10 SECONDS HERO SECTION */}
-      <section
-        style={{
-          position: "relative",
-          background:
-            "linear-gradient(135deg, rgba(26, 11, 19, 0.92) 0%, rgba(42, 8, 69, 0.88) 50%, rgba(26, 11, 19, 0.95) 100%), url('https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1600') center/cover no-repeat",
-          color: "#FFFFFF",
-          padding: "clamp(60px, 9vw, 110px) clamp(16px, 4vw, 40px)",
-          textAlign: "center",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ maxWidth: "1100px", margin: "0 auto", position: "relative", zIndex: 2 }}>
-          {/* Eyebrow Pill */}
-          <div style={{ marginBottom: "16px" }}>
-            <span
-              style={{
-                backgroundColor: "rgba(212, 175, 55, 0.18)",
-                color: "#D4AF37",
-                border: "1px solid #D4AF37",
-                padding: "8px 20px",
-                borderRadius: "30px",
-                fontSize: "clamp(11px, 1.2vw, 13px)",
-                fontWeight: "700",
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                display: "inline-block",
-              }}
+        <div className="container-page grid gap-10 pb-16 lg:min-h-[760px] lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16 lg:pb-24 lg:pt-32">
+          <div className="-mt-28 relative lg:mt-0">
+            <p className="eyebrow eyebrow-line animate-fade-up text-gold-light">Bridal makeup · Jodhpur<span className="hidden sm:inline">, Rajasthan</span></p>
+            <h1
+              className="mt-5 animate-fade-up font-serif text-[2.6rem] font-medium leading-[1.04] tracking-tight sm:text-6xl lg:text-[4.4rem]"
+              style={{ animationDelay: "60ms" }}
             >
-              👑 {isHindi ? "शाही राजपूती ब्राइडल आर्टिस्ट्री" : "Royal Rajputi Bridal Artistry"}
-            </span>
+              Bridal makeup that feels like <em className="font-medium text-gold-light">you</em>, on your biggest day.
+            </h1>
+            <p
+              className="mt-6 max-w-xl animate-fade-up text-base leading-relaxed text-white/75 sm:text-lg"
+              style={{ animationDelay: "120ms" }}
+            >
+              Traditional Rajasthani bridal looks, HD and airbrush finishes, hair and poshak draping — by Prachi and her
+              team, in Jodhpur and across Rajasthan.
+            </p>
+            <div className="mt-8 flex animate-fade-up flex-wrap gap-3" style={{ animationDelay: "180ms" }}>
+              <Link href="/book" className="btn-primary px-7 py-3.5 text-[15px]">
+                Book your date <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+              <Link href="/services" className="btn-light px-7 py-3.5 text-[15px]">
+                Services &amp; prices
+              </Link>
+            </div>
+            <div className="mt-10 animate-fade-up lg:hidden" style={{ animationDelay: "240ms" }}>
+              <AvailabilityChecker />
+            </div>
           </div>
 
-          {/* Main Hero Headline */}
-          <h1
-            style={{
-              fontFamily: "'Playfair Display', serif",
-              color: "#D4AF37",
-              fontSize: "clamp(30px, 5.5vw, 60px)",
-              letterSpacing: "1.5px",
-              fontWeight: "700",
-              margin: "12px 0 16px 0",
-              lineHeight: "1.18",
-            }}
-          >
-            MAKEOVERS BY PRACHI
-          </h1>
-
-          {/* Explicit What & Where Statement (The First 10 Seconds) */}
-          <p
-            style={{
-              fontFamily: "'Cinzel', serif",
-              fontSize: "clamp(16px, 2.2vw, 24px)",
-              color: "#FDFBF7",
-              marginBottom: "16px",
-              letterSpacing: "1px",
-              fontWeight: "600",
-            }}
-          >
-            {isHindi
-              ? "जोधपुर, जयपुर, उदयपुर एवं डेस्टिनेशन वेडिंग्स में प्रामाणिक राजपूती ब्राइडल मेकअप"
-              : "Royal Rajputi bridal makeup in Jodhpur, Jaipur, Udaipur and destination weddings."}
-          </p>
-
-          <p
-            style={{
-              maxWidth: "780px",
-              margin: "0 auto 36px auto",
-              color: "#E8D3C7",
-              fontSize: "clamp(14px, 1.4vw, 16px)",
-              lineHeight: "1.7",
-              fontWeight: "300",
-            }}
-          >
-            Specializing in 16-hour sweat-proof HD Airbrush base, traditional Rajputi poshak & dupatta draping, Borla and Aad jewelry coordination tailored for luxury Indian palace banquets.
-          </p>
-
-          {/* TWO CLEAR ACTION BUTTONS */}
-          <div
-            style={{
-              display: "flex",
-              gap: "16px",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              marginBottom: "46px",
-            }}
-          >
-            {/* Button 1: Check my date */}
-            <button
-              onClick={scrollToDateChecker}
-              style={{
-                background: "linear-gradient(135deg, #E6CA65 0%, #D4AF37 50%, #997B1E 100%)",
-                color: "#2A0845",
-                padding: "14px 28px",
-                borderRadius: "30px",
-                fontSize: "15px",
-                fontWeight: "700",
-                border: "none",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                boxShadow: "0 8px 24px rgba(212, 175, 55, 0.4)",
-              }}
-            >
-              <Calendar size={18} />
-              <span>{isHindi ? "मेरी शादी की तारीख चेक करें" : "Check my date"}</span>
-              <ArrowRight size={16} />
-            </button>
-
-            {/* Button 2: Chat / Talk to us */}
-            <button
-              onClick={() => {
-                setAssistantPrompt("Namaste! I would like to check availability and packages for my wedding.");
-              }}
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-                color: "#FFFFFF",
-                border: "1.5px solid #D4AF37",
-                padding: "14px 26px",
-                borderRadius: "30px",
-                fontSize: "15px",
-                fontWeight: "600",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                backdropFilter: "blur(8px)",
-              }}
-            >
-              <MessageCircle size={18} style={{ color: "#D4AF37" }} />
-              <span>{isHindi ? "बातचीत करें / चैट असिस्टेंट" : "Chat / Talk to us"}</span>
-            </button>
-          </div>
-
-          {/* REAL TRUST LINE WITH BACKED-UP NUMBERS */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-              gap: "16px",
-              maxWidth: "920px",
-              margin: "0 auto",
-              backgroundColor: "rgba(255, 255, 255, 0.07)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              padding: "20px",
-              borderRadius: "20px",
-              border: "1px solid rgba(212, 175, 55, 0.35)",
-            }}
-          >
-            {stats.map((s, idx) => (
-              <div key={idx} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "20px", marginBottom: "4px" }}>{s.icon}</div>
-                <div
-                  style={{
-                    fontFamily: "'Playfair Display', serif",
-                    fontSize: "clamp(20px, 2.5vw, 28px)",
-                    fontWeight: "700",
-                    color: "#D4AF37",
-                  }}
-                >
-                  {s.value}
-                </div>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#E8D3C7",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    fontWeight: "500",
-                  }}
-                >
-                  {s.label}
-                </div>
-              </div>
-            ))}
+          {/* Desktop: arched portrait with the date checker floating over it */}
+          <div className="relative hidden lg:block">
+            <div className="relative ml-auto aspect-[4/5] w-full max-w-[480px] animate-scale-in overflow-hidden rounded-t-[999px] rounded-b-[2rem] ring-1 ring-gold/30">
+              <FadeImg
+                src={SITE_IMAGES.hero}
+                alt="A bride in traditional jewellery with soft smoky eye makeup"
+                loading="eager"
+                sizes="480px"
+                className="h-full w-full object-cover object-[50%_30%]"
+              />
+              <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-plum-dark/40 via-transparent to-transparent" />
+            </div>
+            <div aria-hidden="true" className="absolute -right-4 -top-4 h-28 w-28 rounded-full border border-gold/30" />
+            <div className="absolute -bottom-10 -left-10 w-[380px] animate-fade-up" style={{ animationDelay: "260ms" }}>
+              <AvailabilityChecker />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* PART 1: INTENT-FIRST GUIDE ("When is your wedding?") + HOW BOOKING WORKS + WORRY REDUCTION */}
-      <IntentBookingGuide
-        lang={lang}
-        onOpenAssistant={(customPrompt) => {
-          setAssistantPrompt(customPrompt || "Hi, I want to check wedding date availability.");
-        }}
-      />
+      {/* ---------------- Trust strip ---------------- */}
+      <section aria-label="Why book with us" className="border-b border-sand/70 bg-ivory">
+        <ul className="container-page grid grid-cols-2 gap-x-4 gap-y-6 py-8 sm:py-10 lg:grid-cols-4">
+          {TRUST.map(({ icon: Icon, title, text }, i) => (
+            <li key={title} data-reveal data-reveal-delay={i * 60} className="flex items-start gap-3">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold/40 text-gold-dark">
+                <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block text-sm font-semibold text-plum">{title}</span>
+                <span className="mt-0.5 block text-xs leading-snug text-muted">{text}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      {/* 2. SIGNATURE SHOWCASE SECTION */}
-      <section
-        id="signature-showcases"
-        style={{ padding: "clamp(40px, 6vw, 80px) clamp(16px, 4vw, 36px)", maxWidth: "1200px", margin: "0 auto" }}
-      >
-        <div style={{ textAlign: "center", marginBottom: "48px" }}>
-          <span style={{ fontSize: "12px", color: "#8C6D23", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
-            EXQUISITE ARTISTRY
-          </span>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 4vw, 42px)", color: "#2A0845", margin: "8px 0 12px 0" }}>
-            Signature Royal Styling
-          </h2>
-          <p style={{ color: "#6E6359", fontSize: "16px", maxWidth: "600px", margin: "0 auto" }}>
-            Tailored bridal transformations honoring traditional Indian skin tones and royal heritage
-          </p>
+      {/* ---------------- Services ---------------- */}
+      <section className="section">
+        <div className="container-page">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal>
+            <div>
+              <p className="eyebrow eyebrow-line">Services</p>
+              <h2 className="h-display mt-3 text-4xl sm:text-5xl">Looks for every celebration</h2>
+            </div>
+            <Link href="/services" className="link-gold text-sm">
+              All services &amp; prices <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+          {featured.length > 0 ? (
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {featured.map((s, i) => (
+                <ServiceCard key={s.id} service={s} delay={i * 80} />
+              ))}
+            </div>
+          ) : (
+            <p className="alert-info mt-10">
+              Prices on request. Our service list is being updated, so please{" "}
+              <Link href="/contact" className="font-semibold underline">
+                contact us
+              </Link>{" "}
+              for a quote.
+            </p>
+          )}
         </div>
+      </section>
 
-        <div className="responsive-grid">
-          {showcases.map((card, idx) => (
-            <div key={idx} className="glass-card" style={{ overflow: "hidden", display: "flex", flexDirection: "column" }}>
-              <div className="zoom-img-container" style={{ height: "260px", position: "relative" }}>
-                <img src={card.img} alt={card.title} className="zoom-img" />
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "14px",
-                    left: "14px",
-                    backgroundColor: "#2A0845",
-                    color: "#D4AF37",
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    fontSize: "11px",
-                    fontWeight: "bold",
-                    letterSpacing: "1px",
-                  }}
-                >
-                  {card.tag}
-                </span>
+      {/* ---------------- Approach (editorial) ---------------- */}
+      <section className="section bg-blush/50">
+        <div className="container-page grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+          <div className="relative mx-auto w-full max-w-md lg:max-w-none" data-reveal>
+            <div className="grid grid-cols-5 gap-4">
+              <div className="col-span-3 overflow-hidden rounded-[1.75rem] shadow-lift">
+                <FadeImg src={SITE_IMAGES.services.bridal} alt="Bridal look with red dupatta and gold jewellery" sizes="(min-width:1024px) 320px, 60vw" className="aspect-[3/4] h-full w-full object-cover" />
               </div>
+              <div className="col-span-2 flex flex-col gap-4 pt-10">
+                <div className="overflow-hidden rounded-[1.5rem] shadow-soft">
+                  <FadeImg src={SITE_IMAGES.detailJewellery} alt="Close-up of traditional gold jewellery" sizes="200px" className="aspect-square w-full object-cover" />
+                </div>
+                <div className="overflow-hidden rounded-[1.5rem] shadow-soft">
+                  <FadeImg src={SITE_IMAGES.detailPalette} alt="Eyeshadow palette and brush" sizes="200px" className="aspect-[4/5] w-full object-cover" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow eyebrow-line" data-reveal>
+              Our approach
+            </p>
+            <h2 className="h-display mt-3 text-4xl sm:text-5xl" data-reveal>
+              Made for long days, <em className="font-medium text-gold-dark">bright lights</em> and every photo.
+            </h2>
+            <p className="lead mt-5" data-reveal>
+              Every bride is different. We plan your look around your outfit, skin and the rituals of your day, so it
+              still looks fresh at the last pheras.
+            </p>
+            <ul className="mt-8 space-y-5">
+              {APPROACH.map((a, i) => (
+                <li key={a.title} className="flex gap-4" data-reveal data-reveal-delay={i * 80}>
+                  <span className="mt-1 font-serif text-lg italic text-gold-dark">0{i + 1}</span>
+                  <span>
+                    <span className="block font-semibold text-plum">{a.title}</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-muted">{a.text}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link href="/gallery" className="link-gold mt-8 text-sm" data-reveal>
+              See the gallery <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+      </section>
 
-              <div style={{ padding: "24px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-                <div>
-                  <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: "22px", color: "#2A0845", margin: "0 0 4px 0" }}>
-                    {card.title}
-                  </h3>
-                  <div style={{ fontSize: "13px", color: "#8C6D23", fontWeight: "600", marginBottom: "12px" }}>
-                    {card.subtitle}
-                  </div>
-                  <p style={{ color: "#6E6359", fontSize: "14px", lineHeight: "1.6", marginBottom: "20px" }}>
-                    {card.desc}
+      {/* ---------------- How booking works ---------------- */}
+      <section className="section">
+        <div className="container-page">
+          <div className="mx-auto max-w-2xl text-center" data-reveal>
+            <p className="eyebrow">How booking works</p>
+            <h2 className="h-display mt-3 text-4xl sm:text-5xl">Secure your date in minutes</h2>
+          </div>
+          <ol className="relative mt-12 grid gap-10 md:grid-cols-3 md:gap-8 md:before:absolute md:before:left-[16%] md:before:right-[16%] md:before:top-7 md:before:h-px md:before:bg-gradient-to-r md:before:from-transparent md:before:via-gold/50 md:before:to-transparent md:before:content-['']">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="relative text-center" data-reveal data-reveal-delay={i * 100}>
+                <span className="relative mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full border border-gold/40 bg-ivory font-serif text-xl font-semibold text-gold-dark shadow-soft">
+                  {i + 1}
+                </span>
+                <h3 className="mt-5 font-serif text-xl font-semibold">{s.title}</h3>
+                <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mx-auto mt-10 max-w-xl text-center text-sm text-muted" data-reveal>
+            A {settings.depositPercent}% deposit reserves your date. It&apos;s held for {settings.holdMinutes} minutes while
+            you complete the UPI payment.
+          </p>
+          <div className="mt-8 text-center" data-reveal>
+            <Link href="/book" className="btn-dark px-7">
+              Start booking <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- Where we work ---------------- */}
+      <section className="section pt-0">
+        <div className="container-page">
+          <div data-reveal>
+            <p className="eyebrow eyebrow-line">Where we work</p>
+            <h2 className="h-display mt-3 text-4xl sm:text-5xl">Based in Jodhpur, travelling across Rajasthan</h2>
+          </div>
+          <div className="no-scrollbar -mx-5 mt-10 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+            {CITIES.map((c, i) => (
+              <Link
+                key={c.href}
+                href={c.href}
+                data-reveal
+                data-reveal-delay={i * 70}
+                className="group relative block aspect-[3/4] w-[72%] shrink-0 snap-start overflow-hidden rounded-2xl bg-plum shadow-soft sm:w-auto"
+              >
+                <FadeImg src={c.img} alt="" sizes="(min-width:1024px) 280px, (min-width:640px) 50vw, 72vw" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out-expo group-hover:scale-105" />
+                <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-plum-dark/85 via-plum-dark/10 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                  <p className="font-serif text-2xl font-semibold">{c.name}</p>
+                  <p className="mt-1 flex items-center justify-between text-sm text-white/80">
+                    {c.note}
+                    <ArrowRight className="h-4 w-4 -translate-x-1 opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true" />
                   </p>
                 </div>
-
-                <button
-                  onClick={() => {
-                    setAssistantPrompt(`Hi! I would like to book or get a quote for the '${card.title}'.`);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "#2A0845",
-                    fontWeight: "700",
-                    fontSize: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                >
-                  <span>Reserve This Look With Assistant</span>
-                  <span>→</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 3. VERIFIED REVIEWS SECTION */}
-      <section
-        style={{
-          backgroundColor: "#2A0845",
-          color: "#FFFFFF",
-          padding: "clamp(50px, 8vw, 90px) clamp(16px, 5vw, 40px)",
-        }}
-      >
-        <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
-          <span style={{ fontSize: "12px", color: "#D4AF37", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
-            VERIFIED BRIDE REVIEWS
-          </span>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(28px, 4vw, 42px)", color: "#D4AF37", margin: "8px 0 36px 0" }}>
-            Loved by 1,200+ Royal Brides
-          </h2>
-
-          <div className="responsive-grid">
-            {[
-              {
-                name: "Radhika J. (Bridal Client)",
-                loc: "Gorbandh Palace, Jodhpur",
-                text: "Prachi was an absolute dream! My poshak draping and HD eye makeup stayed flawless through the entire 12-hour wedding ceremony in October.",
-                rating: "⭐⭐⭐⭐⭐",
-              },
-              {
-                name: "Ananya S. (Destination Bride)",
-                loc: "City Palace, Udaipur",
-                text: "The 16-hour sweat-proof airbrush base was unbelievable. Even in November afternoon heat, my skin looked radiant and glass-smooth in every photo!",
-                rating: "⭐⭐⭐⭐⭐",
-              },
-              {
-                name: "Kavita M. (Engagement Glam)",
-                loc: "Rambagh Palace, Jaipur",
-                text: "Soft dewy makeup done to perfection! Everyone complimented my look. The 15-minute hold and instant WhatsApp confirmation made planning stress-free.",
-                rating: "⭐⭐⭐⭐⭐",
-              },
-            ].map((rev, idx) => (
-              <div
-                key={idx}
-                style={{
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
-                  backdropFilter: "blur(12px)",
-                  padding: "28px",
-                  borderRadius: "20px",
-                  border: "1px solid rgba(212, 175, 55, 0.25)",
-                  textAlign: "left",
-                }}
-              >
-                <div style={{ fontSize: "18px", marginBottom: "10px" }}>{rev.rating}</div>
-                <p style={{ color: "#E8D3C7", fontSize: "14px", lineHeight: "1.7", marginBottom: "16px", fontStyle: "italic" }}>
-                  "{rev.text}"
-                </p>
-                <div style={{ fontWeight: "700", color: "#D4AF37", fontSize: "15px" }}>{rev.name}</div>
-                <div style={{ fontSize: "12px", color: "#E8D3C7" }}>📍 {rev.loc}</div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* 4. FAQ ACCORDION SECTION */}
-      <section style={{ padding: "clamp(50px, 8vw, 90px) clamp(16px, 5vw, 40px)", maxWidth: "850px", margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(26px, 3.5vw, 38px)", color: "#2A0845" }}>
-            Frequently Asked Questions
-          </h2>
-          <p style={{ color: "#6E6359", fontSize: "15px" }}>Everything you need to know before locking your wedding date</p>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {faqs.map((faq, idx) => (
-            <div
-              key={idx}
-              onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
-              style={{
-                backgroundColor: "#FFFFFF",
-                borderRadius: "16px",
-                border: "1px solid #E5E0D8",
-                padding: "20px 24px",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                boxShadow: "0 4px 15px rgba(0,0,0,0.03)",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: "17px", color: "#2A0845", margin: 0 }}>
-                  {faq.q}
-                </h4>
-                <span style={{ fontSize: "20px", color: "#8C6D23", fontWeight: "bold" }}>
-                  {activeFaq === idx ? "−" : "+"}
-                </span>
-              </div>
-              {activeFaq === idx && (
-                <p style={{ color: "#6E6359", fontSize: "14px", lineHeight: "1.6", marginTop: "14px" }}>
-                  {faq.a}
-                </p>
-              )}
-            </div>
-          ))}
+      {/* ---------------- CTA ---------------- */}
+      <section className="container-page">
+        <div className="relative isolate overflow-hidden rounded-[2rem] bg-plum px-6 py-14 text-center text-white sm:px-12 sm:py-20" data-reveal>
+          <FadeImg src={SITE_IMAGES.mehendi} alt="" sizes="1100px" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-30" />
+          <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-br from-plum-dark/90 via-plum/80 to-plum-light/70" />
+          <p className="eyebrow text-gold-light">Questions first?</p>
+          <h2 className="mx-auto mt-3 max-w-2xl font-serif text-4xl font-medium sm:text-5xl">Let&apos;s talk about your day</h2>
+          <p className="mx-auto mt-4 max-w-xl text-white/75">
+            Message us about looks, trials, timings or travel and we&apos;ll get back to you.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            {wa && (
+              <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-primary px-7">
+                Chat on WhatsApp
+              </a>
+            )}
+            <Link href="/contact" className="btn-light px-7">
+              Contact details
+            </Link>
+          </div>
         </div>
       </section>
-
-      {/* 5. FOOTER */}
-      <footer style={{ backgroundColor: "#1A0B13", color: "#FFFFFF", padding: "60px 20px 30px 20px", textAlign: "center" }}>
-        <h3 style={{ fontFamily: "'Playfair Display', serif", color: "#D4AF37", fontSize: "26px", margin: 0 }}>
-          MAKEOVERS BY PRACHI
-        </h3>
-        <p style={{ color: "#E8D3C7", fontSize: "14px", marginTop: "8px" }}>
-          Jodhpur Headquarters • Jaipur • Udaipur • Palace Destination Weddings • WhatsApp: +91 98290 12345
-        </p>
-
-        <div style={{ margin: "24px 0", display: "flex", gap: "20px", justifyContent: "center", flexWrap: "wrap", fontSize: "14px" }}>
-          <a href="/" style={{ color: "#E5E0D8", textDecoration: "none" }}>Home</a>
-          <a href="/services" style={{ color: "#E5E0D8", textDecoration: "none" }}>Services & Rates</a>
-          <a href="/gallery" style={{ color: "#E5E0D8", textDecoration: "none" }}>Bridal Gallery</a>
-          <a href="/reviews" style={{ color: "#E5E0D8", textDecoration: "none" }}>Reviews (4.93★)</a>
-          <a href="/track" style={{ color: "#E5E0D8", textDecoration: "none" }}>Track Invoice</a>
-          <a href="/privacy" style={{ color: "#E5E0D8", textDecoration: "none" }}>Privacy Policy</a>
-          <a href="/book" style={{ color: "#D4AF37", fontWeight: "bold", textDecoration: "none" }}>Book Date →</a>
-        </div>
-
-        <p style={{ color: "#8E8E93", fontSize: "12px", marginTop: "30px" }}>
-          © 2026 Makeovers by Prachi. All Rights Reserved. Luxury Rajputi Artistry Engine.
-        </p>
-      </footer>
-
-      {/* PART 2: THE SAFE AI BOOKING ASSISTANT (Wired with voice, server tools & OTP hold) */}
-      <SafeBookingAssistant initialPrompt={assistantPrompt} />
     </main>
   );
 }

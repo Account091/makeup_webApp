@@ -24,8 +24,11 @@ class ServiceModel extends ServiceEntity {
       category: data['category'] ?? '',
       description: data['description'] ?? '',
       priceMode: _parsePriceMode(data['priceMode']),
-      startingPrice: (data['startingPrice'] as num?)?.toDouble() ?? 0.0,
-      duration: data['duration'] ?? '',
+      startingPrice:
+          ((data['price'] ?? data['startingPrice']) as num?)?.toDouble() ?? 0.0,
+      duration: data['durationMinutes'] is num
+          ? '${data['durationMinutes']} min'
+          : (data['duration'] ?? '').toString(),
       inclusions: List<String>.from(data['inclusions'] ?? []),
       imageUrl: data['imageUrl'] ?? '',
       isFeatured: data['isFeatured'] ?? false,

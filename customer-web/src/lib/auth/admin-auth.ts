@@ -1,23 +1,15 @@
-import { initializeApp, getApps, applicationDefault } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { adminAuth } from "../firebase-admin";
 
 /**
- * Initialize Firebase Admin singleton
+ * Firebase Admin Auth (shared singleton from lib/firebase-admin).
  */
 export function getFirebaseAdminAuth() {
-  if (getApps().length === 0) {
-    if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-      initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "makeovers-by-prachi-test",
-      });
-    } else {
-      initializeApp({
-        credential: applicationDefault(),
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "makeovers-by-prachi",
-      });
-    }
-  }
-  return getAuth();
+  return adminAuth();
+}
+
+/** The x-user-role header shortcut is ONLY honoured against the local Auth emulator, never in production. */
+function mockHeadersAllowed(): boolean {
+  return Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST) && process.env.NODE_ENV !== "production";
 }
 
 export interface AdminAuthResult {
@@ -34,7 +26,7 @@ export interface AdminAuthResult {
  * Supports:
  * 1. REAL Firebase ID-token verification (Authorization: Bearer <idToken>)
  *    Verified against Firebase Auth Emulator or Production Firebase Auth.
- * 2. Mocked header fallback for lightweight offline tests (x-user-role, x-org-id)
+ * 2. Mocked header fallback (x-user-role, x-org-id) — emulator + non-production only
  */
 export async function verifyAdminAuthToken(req: Request): Promise<AdminAuthResult> {
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
@@ -69,8 +61,8 @@ export async function verifyAdminAuthToken(req: Request): Promise<AdminAuthResul
     }
   }
 
-  // Fallback to headers in test/mock mode if explicit header is present
-  const mockRole = req.headers.get("x-user-role");
+  // Header shortcut: emulator + non-production only
+  const mockRole = mockHeadersAllowed() ? req.headers.get("x-user-role") : null;
   if (mockRole) {
     const role = mockRole;
     const orgId = req.headers.get("x-org-id") || process.env.DEFAULT_ORG_ID || "makeovers_by_prachi";

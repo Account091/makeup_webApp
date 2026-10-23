@@ -1,6 +1,7 @@
 # Next.js & Node dependencies
 node_modules/
 .next/
+.next-build/
 out/
 build/
 

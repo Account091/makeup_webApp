@@ -1,12 +1,12 @@
 {
-    "name": "makeup_webapp",
-    "short_name": "makeup_webapp",
+    "name": "Makeovers by Prachi — Admin",
+    "short_name": "MbP Admin",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#FBF8F3",
+    "theme_color": "#4A1942",
+    "description": "Studio console for Makeovers by Prachi",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

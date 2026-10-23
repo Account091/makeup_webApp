@@ -65,7 +65,7 @@ export const getTodayBookingsTool: AiToolDefinition = {
         {
           bookingId: "BK-9021",
           customerName: "Priya Sharma",
-          phone: "+91 9829012345",
+          phone: "+91 9000000000",
           serviceTitle: "Signature Royal Bridal Makeover",
           status: "depositPendingVerification",
           venue: "Gorbandh Palace",

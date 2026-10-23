@@ -1,140 +1,202 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --primary-plum: #2C1320;
-  --plum-dark: #1A0B13;
-  --plum-light: #421D31;
-  --rose-gold: #D4AF37;
-  --rose-gold-gradient: linear-gradient(135deg, #E6CA65 0%, #D4AF37 50%, #997B1E 100%);
-  --blush-pink: #F7EBE8;
-  --champagne: #F9F5F0;
-  --text-dark: #2C1320;
-  --text-muted: #6E6359;
-  --glass-bg: rgba(44, 19, 32, 0.75);
-  --glass-border: rgba(212, 175, 55, 0.35);
+  --primary-plum: #2c1320;
+  --plum-dark: #1a0b13;
+  --plum-light: #421d31;
+  --rose-gold: #d4af37;
+  --rose-gold-gradient: linear-gradient(135deg, #e6ca65 0%, #d4af37 50%, #997b1e 100%);
+  --blush-pink: #f7ebe8;
+  --champagne: #f9f5f0;
+  --text-dark: #2c1320;
+  --text-muted: #6e6359;
   --shadow-luxury: 0 20px 50px rgba(44, 19, 32, 0.12);
   --shadow-hover: 0 25px 60px rgba(44, 19, 32, 0.2);
+  --header-h: 4rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Height reserved at the bottom of the viewport by sticky bars (booking bar). */
+  --bottom-bar: 0px;
+}
+@media (min-width: 1024px) {
+  :root {
+    --header-h: 5rem;
+  }
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+html {
+  scroll-padding-top: calc(var(--header-h) + 1rem);
+  -webkit-tap-highlight-color: transparent;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
-html, body {
+html,
+body {
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   background-color: var(--champagne);
   color: var(--text-dark);
-  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
-  scroll-behavior: smooth;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--plum-dark);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--rose-gold);
-  border-radius: 4px;
+body {
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern", "liga";
 }
 
-/* Keyframe Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Very subtle paper grain over the whole page (static image, no repaint cost) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-@keyframes pulseGlow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 14px rgba(212, 175, 55, 0);
-  }
+::selection {
+  background: rgba(212, 175, 55, 0.35);
+  color: #1a0b13;
+}
+
+/* Visible, consistent keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid #b8932a;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ---------- Scroll reveal (progressive: only hides once JS has booted) ---------- */
+[data-reveal] {
+  transition:
+    opacity 600ms var(--ease-out),
+    transform 600ms var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+html.reveal-ready [data-reveal]:not(.is-revealed) {
+  opacity: 0;
+  transform: translateY(18px);
+}
+
+/* ---------- Skeleton shimmer ---------- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(44, 19, 32, 0.07);
+  border-radius: 0.75rem;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
   100% {
-    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0);
+    transform: translateX(100%);
   }
 }
 
-@keyframes floatSlow {
-  0%, 100% {
-    transform: translateY(0px);
+/* Images fade in once decoded (see <FadeImg>) */
+.img-fade {
+  opacity: 0;
+  transition: opacity 500ms var(--ease-out);
+}
+.img-fade.is-loaded {
+  opacity: 1;
+}
+
+/* Hide scrollbars on horizontal chip rows while keeping them scrollable */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* WhatsApp FAB: lifted above any sticky bottom bar, hidden when a page asks */
+.wa-fab {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px) + var(--bottom-bar));
+}
+@media (min-width: 640px) {
+  .wa-fab {
+    bottom: calc(1.5rem + var(--bottom-bar));
   }
-  50% {
-    transform: translateY(-8px);
+}
+/* Booking page: room for the sticky mobile action bar (76px + safe area) */
+@media (max-width: 1023px) {
+  html[data-bookbar] {
+    --bottom-bar: 76px;
+  }
+  html[data-bookbar] body {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  /* the booking bar carries its own WhatsApp shortcut, so the floating one never covers the form */
+  html[data-bookbar] .wa-fab {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.8);
+  }
+}
+html[data-hide-fab] .wa-fab {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  html.reveal-ready [data-reveal]:not(.is-revealed) {
+    opacity: 1;
+    transform: none;
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.6s ease forwards;
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 2.5s infinite;
-}
-
-.animate-float {
-  animation: floatSlow 4s ease-in-out infinite;
-}
-
-/* Luxury Glassmorphism Utility */
+/* Legacy utility classes still referenced by internal (hidden) pages */
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 24px;
   box-shadow: var(--shadow-luxury);
-  transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
-
-.glass-card:hover {
-  transform: translateY(-6px);
-  border-color: rgba(212, 175, 55, 0.6);
-  box-shadow: var(--shadow-hover);
-}
-
 .glass-card-dark {
-  background: rgba(44, 19, 32, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(44, 19, 32, 0.9);
   border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: 24px;
-  color: #FFFFFF;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
 }
-
-/* Responsive Grid Utility */
 .responsive-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: clamp(16px, 3vw, 32px);
 }
-
 .responsive-grid-dense {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   gap: clamp(12px, 2.5vw, 24px);
 }
-
-/* Luxury Buttons */
 .btn-gold {
   background: var(--rose-gold-gradient);
   color: var(--primary-plum);
-  padding: clamp(12px, 2.5vw, 16px) clamp(24px, 4vw, 36px);
+  padding: 12px 28px;
   border-radius: 30px;
   font-weight: 700;
   text-decoration: none;
@@ -143,21 +205,12 @@ html, body {
   gap: 8px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.35);
-  transition: all 0.3s ease;
-  font-size: clamp(14px, 1.5vw, 16px);
 }
-
-.btn-gold:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 12px 30px rgba(212, 175, 55, 0.5);
-}
-
 .btn-outline-gold {
   background: transparent;
   color: var(--rose-gold);
   border: 1.5px solid var(--rose-gold);
-  padding: clamp(12px, 2.5vw, 16px) clamp(24px, 4vw, 36px);
+  padding: 12px 28px;
   border-radius: 30px;
   font-weight: 600;
   text-decoration: none;
@@ -165,28 +218,89 @@ html, body {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: clamp(14px, 1.5vw, 16px);
+}
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8;
+  }
+  .section {
+    @apply py-16 sm:py-24;
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-gold-dark;
+  }
+  .eyebrow-line::before {
+    content: "";
+    @apply inline-block h-px w-6 bg-current opacity-60;
+  }
+  .h-display {
+    @apply font-serif font-semibold tracking-tight text-plum;
+  }
+  .lead {
+    @apply text-base leading-relaxed text-muted sm:text-lg;
+  }
+  .card {
+    @apply rounded-2xl border border-sand/80 bg-white shadow-soft;
+  }
+  .card-hover {
+    @apply transition duration-300 ease-out-expo hover:-translate-y-1 hover:shadow-lift;
+  }
+  .btn {
+    @apply inline-flex min-h-[44px] select-none items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold tracking-wide transition duration-200 ease-out-expo focus:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 active:scale-[0.97] disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-gold-gradient text-plum-dark shadow-gold-glow hover:-translate-y-px hover:brightness-105 disabled:bg-none disabled:bg-plum/10 disabled:text-plum/40 disabled:shadow-none;
+  }
+  .btn-dark {
+    @apply btn bg-plum text-gold-light shadow-soft hover:-translate-y-px hover:bg-plum-light disabled:bg-plum/10 disabled:text-plum/40 disabled:shadow-none;
+  }
+  .btn-ghost {
+    @apply btn border border-plum/15 bg-white/60 text-plum hover:border-gold hover:bg-white disabled:opacity-50;
+  }
+  .btn-light {
+    @apply btn border border-white/35 text-white backdrop-blur-sm hover:border-white/70 hover:bg-white/10;
+  }
+  .link-gold {
+    @apply inline-flex items-center gap-1.5 font-semibold text-gold-dark underline-offset-4 transition hover:underline;
+  }
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium text-plum;
+  }
+  .field {
+    @apply block min-h-[48px] w-full rounded-xl border border-sand bg-white px-4 py-3 text-base text-plum shadow-[inset_0_1px_2px_rgba(44,19,32,0.04)] transition duration-200 placeholder:text-muted/60 hover:border-gold/60 focus:border-gold focus:outline-none focus:ring-4 focus:ring-gold/15;
+  }
+  .field-invalid {
+    @apply border-red-300 focus:border-red-400 focus:ring-red-100;
+  }
+  .chip {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-sand bg-white px-4 text-sm font-medium text-plum transition duration-200 ease-out-expo hover:border-gold/70 active:scale-[0.97];
+  }
+  .chip-active {
+    @apply border-plum bg-plum text-gold-light shadow-soft hover:border-plum;
+  }
+  .alert-error {
+    @apply rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800;
+  }
+  .alert-info {
+    @apply rounded-xl border border-gold/30 bg-blush px-4 py-3 text-sm text-plum;
+  }
+  .alert-success {
+    @apply rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900;
+  }
 }
 
-.btn-outline-gold:hover {
-  background: rgba(212, 175, 55, 0.15);
-  transform: translateY(-3px);
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, -10px, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--dx, 0px), 340px, 0) rotate(540deg);
+    opacity: 0;
+  }
 }
 
-/* Responsive Image Hover */
-.zoom-img-container {
-  overflow: hidden;
-  border-radius: 16px;
-}
-
-.zoom-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-
-.zoom-img-container:hover .zoom-img {
-  transform: scale(1.08);
+/* Playfair defaults to old-style figures; booking IDs, dates and prices read better with lining figures */
+.font-serif {
+  font-variant-numeric: lining-nums;
 }

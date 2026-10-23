@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Header from "../../components/Header";
 import { BeautyConcierge } from "../../components/ai/BeautyConcierge";
 import { Sparkles, ShieldCheck, Clock, Award, HelpCircle } from "lucide-react";
 
@@ -19,7 +18,6 @@ export default function ConciergePage() {
         flexDirection: "column",
       }}
     >
-      <Header />
 
       {/* Main Content Area */}
       <main

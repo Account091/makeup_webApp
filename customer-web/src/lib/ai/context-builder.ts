@@ -181,7 +181,7 @@ Respond in JSON format:
         status: "QUOTE_VIEWED_NO_RESPONSE",
         reason: "Peak season date (Nov 15). Quote viewed 18 hours ago.",
         recommendedAction: "CALL_CUSTOMER",
-        targetPhone: "+91 9829012345",
+        targetPhone: "+91 9000000000",
       },
       {
         id: "ITEM-3",
@@ -224,7 +224,7 @@ Respond in JSON format:
   ],
   "actionCards": [
     { "label": "Review Payment (BK-9921)", "actionType": "VERIFY_PAYMENT_RECOMMENDED", "targetId": "BK-9921" },
-    { "label": "Call Customer (Neha)", "actionType": "CALL_CUSTOMER", "phone": "+919829012345" }
+    { "label": "Call Customer (Neha)", "actionType": "CALL_CUSTOMER", "phone": "+919000000000" }
   ],
   "requiresHumanApproval": true
 }`;

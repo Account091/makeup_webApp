@@ -48,7 +48,7 @@ export const getCustomerSummaryTool: AiToolDefinition = {
 
     return {
       customer: {
-        phone: targetPhone || "+91 9829012345",
+        phone: targetPhone || "+91 9000000000",
         fullName: "Priya Sharma",
         totalBookings: 2,
         lifetimeValue: 40000,

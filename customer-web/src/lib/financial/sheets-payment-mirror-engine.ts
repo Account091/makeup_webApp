@@ -9,9 +9,8 @@
  * 5. Server-side dispatch only. If Sheets fails/times out, Firestore operation succeeds; event queued for DLQ retry.
  */
 
-export const GOOGLE_SHEETS_SCRIPT_URL =
-  process.env.GOOGLE_SHEETS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbyALFEurJX9pskfoAvnK-BZVuwMNueV4RcsEAJRZ6wZMP5q9BrU_tD0Vd_OF77BvkM1/exec";
+// Optional: the mirror is disabled unless GOOGLE_SHEETS_SCRIPT_URL is set. No hard-coded fallback.
+export const GOOGLE_SHEETS_SCRIPT_URL = process.env.GOOGLE_SHEETS_SCRIPT_URL || "";
 
 export type PaymentEventType =
   | 'PAYMENT_SESSION_STARTED'
@@ -101,9 +100,10 @@ const mirrorPendingRetryQueue: Array<{ sheet: string; payload: any; error: strin
  * Helper to dispatch mirror payload to Google Sheets Apps Script Webhook safely.
  */
 async function dispatchToGoogleSheets(sheetTarget: 'Payments' | 'PaymentEvents', payload: any): Promise<boolean> {
+  if (!GOOGLE_SHEETS_SCRIPT_URL) return false;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
       method: "POST",

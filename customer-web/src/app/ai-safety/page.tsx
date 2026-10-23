@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Header from "../../components/Header";
 import { AiSafetyDashboard } from "../../components/ai/AiSafetyDashboard";
 
 export default function AiSafetyPage() {
@@ -17,7 +16,6 @@ export default function AiSafetyPage() {
         flexDirection: "column",
       }}
     >
-      <Header />
       <main
         style={{
           flex: 1,

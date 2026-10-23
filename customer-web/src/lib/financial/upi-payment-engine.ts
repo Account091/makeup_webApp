@@ -9,8 +9,8 @@
  * 5. AI extraction is evidence analysis; ADMIN VERIFICATION remains the final authority to CONFIRM and lock calendar.
  */
 
-export const CONFIGURED_UPI_ID = "bhawanisanker1967@okaxis";
-export const CONFIGURED_PAYEE_NAME = "Bhawani Sankar";
+export const CONFIGURED_UPI_ID = process.env.UPI_ID || "";
+export const CONFIGURED_PAYEE_NAME = process.env.UPI_PAYEE_NAME || "";
 export const SESSION_EXPIRY_SECONDS = 420; // 7 minutes = 420 seconds
 
 export interface PaymentSession {
@@ -201,7 +201,7 @@ export function validateUpiPaymentSubmission(params: {
 
   // 4. Check Payee UPI ID Match
   const extractedPayee = (params.aiResult.payee || "").toLowerCase().trim();
-  const payeeMatches = extractedPayee.includes("bhawanisanker") || extractedPayee.includes("okaxis") || extractedPayee === CONFIGURED_UPI_ID;
+  const payeeMatches = extractedPayee === CONFIGURED_UPI_ID;
   if (!payeeMatches) {
     errors.push(`PAYEE_MISMATCH: Payee '${extractedPayee}' does not match configured UPI ID '${CONFIGURED_UPI_ID}'`);
   }

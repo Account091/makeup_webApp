@@ -74,7 +74,7 @@ export function calculateFinancialIntelligenceData(): ExecutiveFinancialDataPack
     {
       bookingId: "bk_2026_101",
       customerName: "Priya Sharma",
-      customerPhone: "+919829012345",
+      customerPhone: "+919000000000",
       eventDate: "2026-10-14",
       totalPrice: 25000,
       paidAmount: 7500,

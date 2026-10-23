@@ -42,13 +42,13 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
       readyByTime: '16:00',
       venueLocation: 'Gorbandh Palace, Jodhpur',
       city: 'Jodhpur',
-      isOutstation: false,
     ),
     serviceTitle: 'Signature Bridal Makeover',
     packageName: 'Royal Rajasthani Poshak & Jewelry Package',
     commercials: const CommercialDetails(
       basePrice: 25000,
       travelFee: 1500,
+      totalAmount: 26500,
       depositRequired: 7500,
       depositPaid: 7500,
     ),
@@ -248,7 +248,7 @@ class _BookingStatusScreenState extends State<BookingStatusScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Ref: ${b.id}', style: AppTextStyles.sectionHeader),
-              StatusBadge(status: b.status),
+              StatusBadge(booking: b),
             ],
           ),
           const Divider(height: 24, color: AppColors.lightBorder),

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Header from "../../components/Header";
 import { WhatsAppAssistantAdmin } from "../../components/ai/WhatsAppAssistantAdmin";
 
 export default function WhatsAppAdminPage() {
@@ -17,7 +16,6 @@ export default function WhatsAppAdminPage() {
         flexDirection: "column",
       }}
     >
-      <Header />
       <main
         style={{
           flex: 1,

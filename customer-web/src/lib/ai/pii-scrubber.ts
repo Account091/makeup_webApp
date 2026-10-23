@@ -3,11 +3,11 @@
  * 
  * Order of execution is critical to prevent over-matching and mislabeling:
  * 1. Explicit Bank Transaction / UTR numbers (e.g. UTR: 426189012345, Ref# 987654321012)
- * 2. UPI Handles (e.g. radhika@oksbi, 9829012345@paytm) - Must run before generic email
+ * 2. UPI Handles (e.g. radhika@oksbi, 9000000000@paytm) - Must run before generic email
  * 3. Email addresses (e.g. bride.radhika@gmail.com)
  * 4. Indian PAN Card (e.g. ABCDE1234F)
  * 5. Aadhaar Numbers (e.g. 2345 6789 0123, 2345-6789-0123, 234567890123)
- * 6. Indian Phone Numbers (e.g. +91 98290 12345, +91-9829012345, 09829012345, 98290 12345, 9829012345)
+ * 6. Indian Phone Numbers (e.g. +91 90000 00000, +91-9000000000, 09000000000, 90000 00000, 9000000000)
  * 7. Standalone 12-digit numbers (tagged as IDENTIFIER)
  * 
  * NOTE: Regexes are created per invocation or reset to avoid stateful lastIndex bugs in JS.

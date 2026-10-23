@@ -1,311 +1,314 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/utils/formatters.dart';
 
-class CustomerCrmScreen extends StatelessWidget {
+import '../../../../core/theme/app_theme.dart';
+import '../../../../data/admin/admin_repositories.dart';
+import '../../../../domain/entities/booking_entity.dart';
+import '../../../../domain/services/customer_aggregation.dart';
+import '../../../common/widgets/admin_widgets.dart';
+import '../../bookings/booking_actions.dart';
+import '../../bookings/bookings_screen.dart';
+
+/// Customers derived live from `bookings`, grouped by phone.
+class CustomerCrmScreen extends StatefulWidget {
   const CustomerCrmScreen({super.key});
 
-  final List<Map<String, dynamic>> _fallbackCustomers = const [
-    {
-      'name': 'Priya Sharma',
-      'phone': '+91 98290 12345',
-      'email': 'priya.sharma@example.com',
-      'instagram': '@priya_bride',
-      'totalBookings': 2,
-      'completedEvents': 1,
-      'totalRevenue': 26500.0,
-      'lastBookingDate': '2026-09-20',
-    },
-    {
-      'name': 'Ananya Rathore',
-      'phone': '+91 94140 67890',
-      'email': 'ananya.r@example.com',
-      'instagram': '@ananya_rathore',
-      'totalBookings': 1,
-      'completedEvents': 1,
-      'totalRevenue': 12000.0,
-      'lastBookingDate': '2026-09-05',
-    },
-    {
-      'name': 'Kavita Mehta',
-      'phone': '+91 97850 54321',
-      'email': 'kavita.m@example.com',
-      'instagram': '@kavita_makeup',
-      'totalBookings': 1,
-      'completedEvents': 0,
-      'totalRevenue': 4500.0,
-      'lastBookingDate': '2026-09-12',
-    },
-  ];
+  @override
+  State<CustomerCrmScreen> createState() => _CustomerCrmScreenState();
+}
+
+class _CustomerCrmScreenState extends State<CustomerCrmScreen> {
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.champagne,
-      appBar: AppBar(
-        backgroundColor: AppColors.deepPlum,
-        title: Text(
-          'Customer CRM & Revenue Insights',
-          style: AppTextStyles.headingTitle
-              .copyWith(color: AppColors.roseGold, fontSize: 18),
-        ),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('bookings').snapshots(),
-        builder: (context, snapshot) {
-          List<Map<String, dynamic>> customers = [];
-
-          if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-            final Map<String, Map<String, dynamic>> customerMap = {};
-
-            for (var doc in snapshot.data!.docs) {
-              final data = doc.data() as Map<String, dynamic>? ?? {};
-              final cust = data['customerDetails'] as Map<String, dynamic>? ?? {};
-              final comm = data['commercials'] as Map<String, dynamic>? ?? {};
-              final event = data['event'] as Map<String, dynamic>? ?? {};
-
-              final name = (cust['fullName'] ?? data['customerName'] ?? 'Client').toString();
-              final phone = (cust['phone'] ?? data['customerPhone'] ?? '').toString();
-              final email = (cust['email'] ?? '').toString();
-              final instagram = (cust['instagramHandle'] ?? '@bride').toString();
-
-              final depositPaid = (comm['depositPaid'] as num?)?.toDouble() ?? 0.0;
-              final basePrice = (comm['basePrice'] as num?)?.toDouble() ?? 15000.0;
-              final rawStatus = (data['status'] ?? '').toString().toUpperCase();
-              final isCompleted = rawStatus == 'CONFIRMED' || rawStatus == 'VERIFIED' || rawStatus == 'COMPLETED';
-
-              String lastDate = 'Recently';
-              final rawDate = event['date'];
-              if (rawDate is Timestamp) {
-                final d = rawDate.toDate();
-                lastDate = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-              } else if (rawDate is String) {
-                lastDate = rawDate.split('T').first;
-              }
-
-              final key = phone.trim().isNotEmpty ? phone.trim() : name.trim();
-
-              if (!customerMap.containsKey(key)) {
-                customerMap[key] = {
-                  'name': name,
-                  'phone': phone,
-                  'email': email,
-                  'instagram': instagram,
-                  'totalBookings': 1,
-                  'completedEvents': isCompleted ? 1 : 0,
-                  'totalRevenue': depositPaid > 0 ? depositPaid : basePrice,
-                  'lastBookingDate': lastDate,
-                };
-              } else {
-                customerMap[key]!['totalBookings'] =
-                    (customerMap[key]!['totalBookings'] as int) + 1;
-                if (isCompleted) {
-                  customerMap[key]!['completedEvents'] =
-                      (customerMap[key]!['completedEvents'] as int) + 1;
-                }
-                customerMap[key]!['totalRevenue'] =
-                    (customerMap[key]!['totalRevenue'] as double) +
-                        (depositPaid > 0 ? depositPaid : basePrice);
-              }
-            }
-
-            customers = customerMap.values.toList();
-          }
-
-          if (customers.isEmpty) {
-            customers = _fallbackCustomers;
-          }
-
-          final totalClients = customers.length;
-          final totalRev = customers.fold<double>(
-              0.0, (acc, c) => acc + (c['totalRevenue'] as num).toDouble());
-
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Client Profiles & History',
-                                style: AppTextStyles.headingDisplay.copyWith(fontSize: 22)),
-                            const SizedBox(height: 4),
-                            Text('Track client bookings, preferences, and lifetime value.',
-                                style: AppTextStyles.bodySecondary),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.lightBorder),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.people, color: AppColors.deepPlum, size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$totalClients Clients • ${AppFormatters.formatCurrency(totalRev)}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.deepPlum,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final int cols = width > 760 ? 2 : 1;
-                        final double cardWidth = cols == 1
-                            ? width
-                            : (width - (cols - 1) * 16) / cols;
-
-                        return Wrap(
-                          spacing: 16,
-                          runSpacing: 16,
-                          children: customers.map((customer) => SizedBox(
-                            width: cardWidth,
-                            child: _buildCustomerCard(context, customer),
-                          )).toList(),
-                        );
-                      },
-                    ),
-                  ],
+    final repos = context.read<AdminRepositories>();
+    return LiveStreamBuilder<List<BookingEntity>>(
+      create: repos.bookings.watchAll,
+      loading: (_) => const SkeletonList(withHeader: true),
+      builder: (context, bookings) {
+        final all = aggregateCustomers(bookings);
+        final q = _query.trim().toLowerCase();
+        final customers = all
+            .where(
+              (c) =>
+                  q.isEmpty ||
+                  c.name.toLowerCase().contains(q) ||
+                  c.phone.contains(q) ||
+                  c.email.toLowerCase().contains(q),
+            )
+            .toList();
+        final collected = all.fold<double>(0, (s, c) => s + c.totalPaid);
+        return LayoutBuilder(
+          builder: (context, c) {
+            final pad = c.maxWidth >= 600 ? 28.0 : 16.0;
+            final cols = c.maxWidth >= 1100 ? 2 : 1;
+            return Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(pad, 4, pad, 8),
+                  child: SearchField(
+                    hint: 'Search name, phone or email',
+                    onChanged: (v) => setState(() => _query = v),
+                  ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(pad, 4, pad, 12),
+                  child: Row(
+                    children: [
+                      StatusChip(
+                        label:
+                            '${all.length} customer${all.length == 1 ? '' : 's'}',
+                        color: BrandColors.plum,
+                      ),
+                      const SizedBox(width: 8),
+                      StatusChip(
+                        label: '${formatInr(collected)} collected',
+                        color: BrandColors.gold,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: customers.isEmpty
+                      ? EmptyState(
+                          icon: Icons.people_alt_outlined,
+                          title: bookings.isEmpty
+                              ? 'No customers yet'
+                              : 'No matches',
+                          message: bookings.isEmpty
+                              ? 'Customers appear once they book on the website.'
+                              : 'No customers match your search.',
+                        )
+                      : RefreshIndicator(
+                          color: BrandColors.plum,
+                          onRefresh: () =>
+                              Future.delayed(const Duration(milliseconds: 600)),
+                          child: GridView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(pad, 0, pad, 28),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: cols,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 12,
+                                  mainAxisExtent: 96,
+                                ),
+                            itemCount: customers.length,
+                            itemBuilder: (context, i) => FadeSlideIn(
+                              key: ValueKey(customers[i].phone),
+                              index: i,
+                              child: _CustomerTile(customer: customers[i]),
+                            ),
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
+}
 
-  Widget _buildCustomerCard(
-      BuildContext context, Map<String, dynamic> customer) {
-    final name = (customer['name'] ?? 'Client').toString();
-    final phone = (customer['phone'] ?? '').toString();
-    final firstLetter = name.isNotEmpty ? name[0].toUpperCase() : 'C';
+class _CustomerTile extends StatelessWidget {
+  final CustomerSummary customer;
+  const _CustomerTile({required this.customer});
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.lightBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  Widget build(BuildContext context) {
+    final c = customer;
+    final theme = Theme.of(context);
+    return AppCard(
+      semanticLabel: 'Customer ${c.name}',
+      onTap: () {
+        tapHaptic();
+        showCustomerProfile(context, c);
+      },
+      padding: const EdgeInsets.fromLTRB(14, 12, 16, 12),
+      child: Row(
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: AppColors.softRose,
-                child: Text(
-                  firstLetter,
-                  style: AppTextStyles.sectionHeader
-                      .copyWith(color: AppColors.deepPlum),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: AppTextStyles.sectionHeader),
-                    Text('$phone • ${customer['instagram']}',
-                        style: AppTextStyles.bodySecondary),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.roseGold.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${customer['completedEvents']} Completed',
-                  style: AppTextStyles.badgeText.copyWith(color: AppColors.roseGold),
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 20, color: AppColors.lightBorder),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Lifetime Revenue', style: AppTextStyles.bodySecondary),
-                  Text(
-                    AppFormatters.formatCurrency(customer['totalRevenue']),
-                    style: AppTextStyles.sectionHeader
-                        .copyWith(color: AppColors.deepPlum),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Last Booking', style: AppTextStyles.bodySecondary),
-                  Text(
-                    customer['lastBookingDate'].toString(),
-                    style: AppTextStyles.bodyPrimary
-                        .copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          if (phone.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+          InitialsAvatar(name: c.name, size: 48),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextButton.icon(
-                  onPressed: () async {
-                    final clean = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-                    var digits = clean.replaceAll('+', '').trim();
-                    if (digits.length == 10) digits = '91$digits';
-                    final uri = Uri.parse('https://wa.me/$digits?text=Hello%20${Uri.encodeComponent(name)}%2C%20this%20is%20Prachi%20from%20Makeovers%20by%20Prachi.');
-                    try {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    } catch (_) {
-                      try { await launchUrl(uri); } catch (_) {}
-                    }
-                  },
-                  icon: const Icon(Icons.chat_bubble_outline, size: 16, color: Colors.green),
-                  label: const Text('WhatsApp Client', style: TextStyle(color: Colors.green, fontSize: 12)),
+                Text(
+                  c.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 2),
+                Text(c.phone, style: theme.textTheme.bodySmall),
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    '${c.bookingCount} booking${c.bookingCount == 1 ? '' : 's'}',
+                    if (c.lastEventDate != null)
+                      'last ${formatDateKeyShort(c.lastEventDate!)}',
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: BrandColors.muted,
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                formatInr(c.totalPaid),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text('paid', style: theme.textTheme.bodySmall),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Customer profile with contact actions and their bookings.
+Future<void> showCustomerProfile(BuildContext context, CustomerSummary c) {
+  return showAdaptivePanel<void>(
+    context,
+    width: 520,
+    builder: (ctx) => _CustomerProfile(customer: c, showClose: true),
+  );
+}
+
+class _CustomerProfile extends StatelessWidget {
+  final CustomerSummary customer;
+  final bool showClose;
+  const _CustomerProfile({required this.customer, required this.showClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = customer;
+    final theme = Theme.of(context);
+    final latest = c.bookings.isEmpty ? null : c.bookings.first;
+    return ListView(
+      padding: EdgeInsets.fromLTRB(20, showClose ? 12 : 0, 20, 28),
+      children: [
+        if (showClose)
+          Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              tooltip: 'Close',
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ),
+        Center(child: InitialsAvatar(name: c.name, size: 76)),
+        const SizedBox(height: 12),
+        Text(
+          c.name,
+          textAlign: TextAlign.center,
+          style: AppTheme.serif(size: 26),
+        ),
+        Text(
+          [c.phone, if (c.email.isNotEmpty) c.email].join(' · '),
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (c.phone.isNotEmpty && c.phone != '(no phone)') ...[
+              FilledButton.tonalIcon(
+                onPressed: () => callCustomer(context, c.phone),
+                icon: const Icon(Icons.call_rounded, size: 18),
+                label: const Text('Call'),
+              ),
+              const SizedBox(width: 8),
+              if (latest != null)
+                FilledButton.tonalIcon(
+                  onPressed: () => whatsappCustomer(context, latest),
+                  icon: const Icon(Icons.chat_rounded, size: 18),
+                  label: const Text('WhatsApp'),
+                ),
+            ],
+            if (c.email.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
+                tooltip: 'Email',
+                onPressed: () =>
+                    launchUrl(Uri(scheme: 'mailto', path: c.email)),
+                icon: const Icon(Icons.mail_outline_rounded, size: 18),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            _Stat(label: 'Bookings', value: '${c.bookingCount}'),
+            const SizedBox(width: 10),
+            _Stat(label: 'Total paid', value: formatInr(c.totalPaid)),
+            const SizedBox(width: 10),
+            _Stat(
+              label: 'Last event',
+              value: c.lastEventDate == null
+                  ? '—'
+                  : formatDateKeyShort(c.lastEventDate!),
+            ),
+          ],
+        ),
+        const SectionTitle('Bookings'),
+        for (var i = 0; i < c.bookings.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: FadeSlideIn(
+              index: i,
+              child: BookingTile(booking: c.bookings[i]),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Stat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Expanded(
+      child: AppCard(
+        shadow: false,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(label, style: theme.textTheme.bodySmall),
+          ],
+        ),
       ),
     );
   }

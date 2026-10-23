@@ -336,7 +336,7 @@ export async function POST(req: Request) {
           success: false,
           fallbackToHuman: true,
           message: "I do not have verified platform information regarding that specific query. Let me connect you directly with Prachi's management team on WhatsApp.",
-          whatsappLink: "https://wa.me/919829012345?text=" + encodeURIComponent(`Hi Prachi, I was asking the AI assistant about: ${userQ}`),
+          whatsappLink: `https://wa.me/${(process.env.STUDIO_WHATSAPP || process.env.NEXT_PUBLIC_STUDIO_WHATSAPP || "").replace(/[^0-9]/g, "")}?text=` + encodeURIComponent(`Hi Prachi, I was asking the AI assistant about: ${userQ}`),
         });
       }
 

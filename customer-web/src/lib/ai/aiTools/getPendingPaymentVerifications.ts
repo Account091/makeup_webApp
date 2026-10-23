@@ -61,7 +61,7 @@ export const getPendingPaymentVerificationsTool: AiToolDefinition = {
         {
           bookingId: "BK-9921",
           customerName: "Priya Sharma",
-          phone: "+91 9829012345",
+          phone: "+91 9000000000",
           utrNumber: "428901293841",
           amountSubmitted: 7500,
           submittedAt: new Date().toISOString(),

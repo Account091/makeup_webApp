@@ -55,9 +55,9 @@ export function validateStudioWhatsAppConfig(): { valid: boolean; phone: string 
 
   const cleanNum = num.replace(/[^0-9]/g, "");
   const prohibitedPlaceholders = [
-    "919829012345",
-    "9829012345",
-    "919829000000",
+    "919000000000",
+    "9000000000",
+    "919000000001",
     "919876543210",
     "1234567890",
   ];

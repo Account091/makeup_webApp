@@ -1,117 +1,100 @@
-"use client";
-
+import Link from "next/link";
 import React from "react";
+import type { Metadata } from "next";
+import { ArrowRight, Quote, Star } from "lucide-react";
+import FadeImg from "../../components/site/FadeImg";
+import PageHeader from "../../components/site/PageHeader";
+import { WhatsAppIcon } from "../../components/site/WhatsAppFab";
+import { getApprovedReviews, getPublicConfig } from "../../lib/booking/server";
+import { formatEventDate, whatsappLink } from "../../lib/booking/types";
+import { SITE_IMAGES } from "../../lib/site-images";
 
-export default function ReviewsPage() {
-  const reviews = [
-    {
-      id: 1,
-      name: "Radhika J. (Signature Bride)",
-      rating: 5,
-      date: "October 2026",
-      location: "Gorbandh Palace, Jodhpur",
-      review: "Prachi was an absolute dream to work with! My poshak draping, heavy borla setting, and HD eye makeup stayed 100% perfect through the entire 12-hour wedding. The advance QR reservation process on the site was super easy and locked my date instantly.",
-      service: "Signature Royal Bridal Makeover",
-    },
-    {
-      id: 2,
-      name: "Ananya Sharma (Destination Bride)",
-      rating: 5,
-      date: "November 2026",
-      location: "City Palace, Udaipur",
-      review: "The 16-hour sweat-proof airbrush base was unbelievable. Even in afternoon sun during our palace shoot, my skin looked radiant and glowing. Her team was extremely punctual and professional.",
-      service: "Destination Palace Bridal Package",
-    },
-    {
-      id: 3,
-      name: "Kavita Meghwal (Engagement Glam)",
-      rating: 5,
-      date: "December 2026",
-      location: "Rambagh Palace, Jaipur",
-      review: "Soft dewy makeup done to absolute perfection! Everyone at our Ring Ceremony praised the look. Highly recommended for all brides in Rajasthan!",
-      service: "Pre-Wedding & Engagement Glam",
-    },
-    {
-      id: 4,
-      name: "Meera Rathore (Bridal Client)",
-      rating: 5,
-      date: "January 2026",
-      location: "Umaid Bhawan, Jodhpur",
-      review: "Prachi understands authentic traditional Rajasthani aesthetics like no one else. The Dupatta and Borla draping stayed secure all night without hurting.",
-      service: "Signature Royal Bridal Makeover",
-    },
-  ];
+export const metadata: Metadata = {
+  title: "Reviews",
+  description: "What brides and families say about Makeovers by Prachi.",
+};
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex gap-0.5" role="img" aria-label={`${rating} out of 5 stars`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star key={i} className={`h-4 w-4 ${i <= rating ? "fill-gold text-gold" : "fill-sand text-sand"}`} aria-hidden="true" />
+      ))}
+    </span>
+  );
+}
+
+export default async function ReviewsPage() {
+  const [reviews, { settings }] = await Promise.all([getApprovedReviews(), getPublicConfig()]);
+  const wa = whatsappLink(settings.whatsappNumber, "Hi Prachi, I'd like to share a review of my makeup.");
 
   return (
-    <main style={{ minHeight: "100vh", backgroundColor: "var(--champagne)", padding: "clamp(40px, 6vw, 80px) clamp(16px, 4vw, 40px)" }}>
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "50px" }}>
-          <span style={{ fontSize: "12px", color: "var(--rose-gold)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
-            VERIFIED CLIENT TESTIMONIALS
-          </span>
-          <h1 style={{ fontFamily: "'Playfair Display', serif", color: "var(--primary-plum)", fontSize: "clamp(30px, 4.5vw, 48px)", margin: "10px 0" }}>
-            4.93★ Client Satisfaction
-          </h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "16px", maxWidth: "600px", margin: "0 auto" }}>
-            Read real feedback from brides and clients across Jodhpur, Jaipur, Udaipur, and destination venues.
-          </p>
-        </div>
+    <main className="section pt-10 sm:pt-16">
+      <div className="container-page">
+        <PageHeader eyebrow="Reviews" title="Kind words from our brides" />
 
-        {/* Rating Summary Card */}
-        <div
-          className="glass-card-dark"
-          style={{
-            padding: "30px",
-            textAlign: "center",
-            maxWidth: "700px",
-            margin: "0 auto 50px auto",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ fontSize: "44px", fontWeight: "800", color: "var(--rose-gold)", fontFamily: "'Playfair Display', serif" }}>
-            4.93 / 5.0
-          </div>
-          <div style={{ fontSize: "20px", color: "var(--rose-gold)", margin: "4px 0 8px 0" }}>
-            ⭐⭐⭐⭐⭐
-          </div>
-          <p style={{ color: "#E5E0D8", fontSize: "14px", margin: 0 }}>
-            Based on 1,200+ verified bridal & occasion makeovers across Rajasthan.
-          </p>
-        </div>
-
-        {/* Reviews Grid */}
-        <div className="responsive-grid">
-          {reviews.map((rev) => (
-            <div key={rev.id} className="glass-card" style={{ padding: "30px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                  <span style={{ fontSize: "16px", color: "var(--rose-gold)" }}>{"⭐".repeat(rev.rating)}</span>
-                  <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: "600" }}>{rev.date}</span>
+        {reviews.length > 0 ? (
+          <div className="mt-12 columns-1 gap-6 md:columns-2 lg:columns-3">
+            {reviews.map((r, i) => (
+              <article key={r.id} className="card mb-6 break-inside-avoid p-6 sm:p-7" data-reveal data-reveal-delay={(i % 3) * 70}>
+                <div className="flex items-center justify-between">
+                  <Stars rating={r.rating} />
+                  <Quote className="h-6 w-6 text-gold/40" aria-hidden="true" />
                 </div>
-
-                <p style={{ color: "var(--text-dark)", fontSize: "14px", lineHeight: "1.7", fontStyle: "italic", marginBottom: "20px" }}>
-                  "{rev.review}"
-                </p>
+                <blockquote className="mt-4 font-serif text-lg leading-relaxed text-plum">“{r.text}”</blockquote>
+                <footer className="mt-5 flex items-center gap-3 border-t border-sand/70 pt-4 text-sm">
+                  <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blush font-serif text-base font-semibold text-gold-dark" aria-hidden="true">
+                    {r.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span>
+                    <span className="block font-semibold">{r.name}</span>
+                    <span className="block text-xs text-muted">
+                      {[r.eventType, r.date && /^\d{4}-\d{2}-\d{2}$/.test(r.date) ? formatEventDate(r.date) : r.date]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                </footer>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <section className="mt-12 overflow-hidden rounded-3xl border border-sand/80 bg-white shadow-soft" data-reveal>
+            <div className="grid md:grid-cols-[1fr_1.1fr]">
+              <div className="relative min-h-[240px] bg-blush md:min-h-[420px]">
+                <FadeImg
+                  src={SITE_IMAGES.services.bridal}
+                  alt=""
+                  sizes="(min-width: 768px) 480px, 100vw"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-plum-dark/50 to-transparent md:bg-gradient-to-r md:from-transparent md:to-white/10" />
               </div>
-
-              <div style={{ paddingTop: "16px", borderTop: "1px solid #E5E0D8" }}>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontWeight: "700", color: "var(--primary-plum)", fontSize: "16px" }}>
-                  {rev.name}
-                </div>
-                <div style={{ fontSize: "12px", color: "var(--rose-gold)", fontWeight: "600", marginTop: "2px" }}>
-                  📍 {rev.location}
-                </div>
-                <div style={{ fontSize: "11px", backgroundColor: "var(--blush-pink)", color: "var(--primary-plum)", padding: "4px 10px", borderRadius: "10px", fontWeight: "bold", display: "inline-block", marginTop: "8px" }}>
-                  {rev.service}
+              <div className="flex flex-col justify-center p-8 sm:p-12">
+                <span className="inline-flex gap-1" aria-hidden="true">
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <Star key={i} className="h-5 w-5 fill-gold text-gold" />
+                  ))}
+                </span>
+                <h2 className="h-display mt-5 text-3xl sm:text-4xl">Our first stories are on their way</h2>
+                <p className="mt-4 leading-relaxed text-muted">
+                  We&apos;re gathering words from our recent brides and their families. Were you one of them? We&apos;d be
+                  so grateful to hear how your day went — a few lines on WhatsApp is perfect.
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  {wa && (
+                    <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-dark px-6">
+                      <WhatsAppIcon className="h-4 w-4" /> Share your experience
+                    </a>
+                  )}
+                  <Link href="/book" className="btn-ghost px-6">
+                    Book your date <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+          </section>
+        )}
       </div>
     </main>
   );

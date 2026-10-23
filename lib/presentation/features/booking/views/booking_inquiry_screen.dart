@@ -379,9 +379,10 @@ class _BookingInquiryScreenState extends State<BookingInquiryScreen> {
         serviceTitle: _selectedService,
         commercials: const CommercialDetails(
           basePrice: 15000,
+          totalAmount: 15000,
           depositRequired: 5000,
         ),
-        status: BookingStatus.awaitingApproval,
+        status: BookingStatus.depositPending,
         createdAt: DateTime.now(),
       );
 

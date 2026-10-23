@@ -111,7 +111,7 @@ export function calculateDestinationOpsData(): DestinationOpsData {
       address: "Pichola, Udaipur, Rajasthan 313001",
       city: "Udaipur",
       contactName: "Mr. Rajeev Sharma (Event Director)",
-      contactPhone: "+91 98290 12345",
+      contactPhone: "+91 90000 00000",
       accessNotes: "Boat transport required to reach island venue. Loading dock available at Rameshwar Ghat.",
       parkingNotes: "Valet parking available at private ghat.",
     },

@@ -18,6 +18,17 @@ service firebase.storage {
       );
     }
 
+    // Payment screenshots: uploaded by the website's server (Admin SDK) only,
+    // viewable by studio staff in the admin app.
+    match /payment_proofs/{bookingId}/{fileName} {
+      allow read: if request.auth != null && (
+        request.auth.token.role == 'super_admin' ||
+        ((request.auth.token.role == 'admin' || request.auth.token.role == 'owner') &&
+         request.auth.token.orgId == 'makeovers_by_prachi')
+      );
+      allow write: if false;
+    }
+
     // 2. Customer Reference Photo Uploads (Strictly Private)
     match /customer_uploads/{bookingId}/{fileName} {
       // Allow creation for images under 10MB

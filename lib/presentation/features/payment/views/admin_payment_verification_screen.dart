@@ -1,107 +1,18 @@
-import 'dart:convert';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/services/firebase_messaging_service.dart';
-import '../../../../data/datasources/vercel_api_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class PaymentSubmissionItem {
-  final String? docId;
-  final String bookingId;
-  final String customerName;
-  final String customerPhone;
-  final double requiredAmount;
-  final double detectedAmount;
-  final String utrNumber;
-  final String aiStatus; // 'SUCCESS' | 'NEEDS_HUMAN_REVIEW'
-  final String proofUrl;
-  String paymentStatus; // 'VERIFICATION_PENDING' | 'VERIFIED' | 'REJECTED'
-  bool isCalendarLocked;
-  final DateTime? eventDate;
-  final String? readyByTime;
-  final String? venue;
+import '../../../../core/theme/app_theme.dart';
+import '../../../../data/admin/admin_repositories.dart';
+import '../../../../domain/entities/booking_entity.dart';
+import '../../../common/widgets/admin_widgets.dart';
+import '../../bookings/booking_actions.dart';
+import '../../bookings/booking_detail_sheet.dart';
 
-  PaymentSubmissionItem({
-    this.docId,
-    required this.bookingId,
-    required this.customerName,
-    required this.customerPhone,
-    required this.requiredAmount,
-    required this.detectedAmount,
-    required this.utrNumber,
-    required this.aiStatus,
-    required this.proofUrl,
-    this.paymentStatus = 'VERIFICATION_PENDING',
-    this.isCalendarLocked = false,
-    this.eventDate,
-    this.readyByTime,
-    this.venue,
-  });
-
-  factory PaymentSubmissionItem.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>? ?? {};
-    final cust = data['customerDetails'] as Map<String, dynamic>? ?? {};
-    final comm = data['commercials'] as Map<String, dynamic>? ?? {};
-    final pay = data['payment'] as Map<String, dynamic>? ?? {};
-    final ev = data['event'] as Map<String, dynamic>? ?? {};
-
-    final bookingId = data['bookingId'] ?? doc.id;
-    final customerName = cust['fullName'] ?? data['customerName'] ?? 'Customer';
-    final customerPhone = cust['phone'] ?? data['customerPhone'] ?? '';
-    final requiredAmount = (comm['depositRequired'] as num?)?.toDouble() ??
-        (data['requiredAmount'] as num?)?.toDouble() ??
-        7500.0;
-    final detectedAmount = (comm['depositPaid'] as num?)?.toDouble() ??
-        (data['detectedAmount'] as num?)?.toDouble() ??
-        requiredAmount;
-    final utrNumber = pay['utrNumber'] ?? data['utrNumber'] ?? 'N/A';
-    final proofUrl = pay['proofUrl'] ??
-        pay['proofFileRef'] ??
-        data['paymentProofUrl'] ??
-        data['proofUrl'] ??
-        '';
-
-    final rawStatus = (pay['status'] ?? data['status'] ?? 'VERIFICATION_PENDING')
-        .toString()
-        .toUpperCase();
-    final isVerified = rawStatus == 'VERIFIED' || rawStatus == 'CONFIRMED';
-    final paymentStatus = isVerified ? 'VERIFIED' : 'VERIFICATION_PENDING';
-
-    DateTime? eventDate;
-    if (ev['date'] != null) {
-      eventDate = DateTime.tryParse(ev['date'].toString());
-    } else if (ev['eventDate'] != null) {
-      if (ev['eventDate'] is Timestamp) {
-        eventDate = (ev['eventDate'] as Timestamp).toDate();
-      } else {
-        eventDate = DateTime.tryParse(ev['eventDate'].toString());
-      }
-    }
-    final readyByTime = ev['readyByTime']?.toString() ?? '16:00';
-    final venue = ev['venue']?.toString() ?? ev['venueLocation']?.toString() ?? 'Gorbandh Palace, Jodhpur';
-
-    return PaymentSubmissionItem(
-      docId: doc.id,
-      bookingId: bookingId,
-      customerName: customerName,
-      customerPhone: customerPhone,
-      requiredAmount: requiredAmount,
-      detectedAmount: detectedAmount,
-      utrNumber: utrNumber,
-      aiStatus: data['aiStatus'] ?? 'SUCCESS',
-      proofUrl: proofUrl,
-      paymentStatus: paymentStatus,
-      isCalendarLocked: isVerified,
-      eventDate: eventDate,
-      readyByTime: readyByTime,
-      venue: venue,
-    );
-  }
-}
-
+/// Live queue of bookings with status PAYMENT_PROOF_SUBMITTED, with a
+/// focused review experience (list + review pane on desktop, list + full
+/// screen review on phones).
 class AdminPaymentVerificationScreen extends StatefulWidget {
   const AdminPaymentVerificationScreen({super.key});
 
@@ -112,1191 +23,824 @@ class AdminPaymentVerificationScreen extends StatefulWidget {
 
 class _AdminPaymentVerificationScreenState
     extends State<AdminPaymentVerificationScreen> {
-  final _apiService = VercelApiService();
+  String? _selectedId;
+  int _selectedIndex = 0;
 
-  // Fallback demo submissions with working high-res receipts
-  final List<PaymentSubmissionItem> _fallbackSubmissions = [
-    PaymentSubmissionItem(
-      bookingId: 'BK-2026-001',
-      customerName: 'Priya Sharma',
-      customerPhone: '+91 98290 12345',
-      requiredAmount: 7500,
-      detectedAmount: 7500,
-      utrNumber: '349812739481',
-      aiStatus: 'SUCCESS',
-      proofUrl:
-          'https://images.unsplash.com/photo-1554415707-9e4466bfe0dc?w=800',
-    ),
-    PaymentSubmissionItem(
-      bookingId: 'BK-2026-002',
-      customerName: 'Ananya Rathore',
-      customerPhone: '+91 98290 99887',
-      requiredAmount: 4500,
-      detectedAmount: 4500,
-      utrNumber: '349812739499',
-      aiStatus: 'SUCCESS',
-      proofUrl:
-          'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800',
-    ),
-  ];
-
-  /// Converts Google Drive share links into direct viewable image stream URLs
-  String _formatDriveImageUrl(String url) {
-    if (url.isEmpty) return '';
-    final clean = url.trim();
-
-    String? fileId;
-    final match1 = RegExp(r'/file/d/([a-zA-Z0-9_-]+)').firstMatch(clean);
-    if (match1 != null) {
-      fileId = match1.group(1);
-    } else {
-      final match2 = RegExp(r'[?&]id=([a-zA-Z0-9_-]+)').firstMatch(clean);
-      if (match2 != null) {
-        fileId = match2.group(1);
-      } else {
-        final match3 = RegExp(r'drive\.google\.com/open\?id=([a-zA-Z0-9_-]+)')
-            .firstMatch(clean);
-        if (match3 != null) {
-          fileId = match3.group(1);
-        }
-      }
+  /// Picks the selected booking; when it left the queue (approved/rejected),
+  /// moves on to the item now at the same position.
+  BookingEntity? _resolveSelected(List<BookingEntity> queue) {
+    if (queue.isEmpty) return null;
+    final i = queue.indexWhere((b) => b.id == _selectedId);
+    if (i >= 0) {
+      _selectedIndex = i;
+      return queue[i];
     }
-
-    if (fileId != null) {
-      // Google Drive thumbnail proxy endpoint returns raw image bytes directly
-      return 'https://drive.google.com/thumbnail?id=$fileId&sz=w1200';
-    }
-
-    return clean;
-  }
-
-  void _promptStep5BankReconciliation(PaymentSubmissionItem item) {
-    bool bankCreditChecked = false;
-    bool amountMatchedChecked = false;
-    bool vpaChecked = false;
-    bool duplicateChecked = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final allChecked = bankCreditChecked &&
-              amountMatchedChecked &&
-              vpaChecked &&
-              duplicateChecked;
-
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.verified_user_outlined, color: Colors.amber.shade900),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Step 5: Bank Reconciliation Gate',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Match UTR in Live Bank Statement before Approval',
-                        style: TextStyle(fontSize: 11, color: Colors.black54),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            content: SizedBox(
-              width: 500,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'DO NOT approve based on screenshot alone. Screenshots can be fabricated. Money must be verified in your NetBanking or UPI Business app.',
-                              style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.champagne.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.lightBorder),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('UTR NUMBER TO SEARCH IN BANK:', style: TextStyle(fontSize: 11, color: Colors.black54)),
-                                const SizedBox(height: 4),
-                                SelectableText(
-                                  item.utrNumber,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    fontFamily: 'monospace',
-                                    color: AppColors.deepPlum,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Amount: ₹${item.detectedAmount.toStringAsFixed(0)} | Client: ${item.customerName}',
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.deepPlum,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            icon: const Icon(Icons.copy, size: 14),
-                            label: const Text('Copy UTR', style: TextStyle(fontSize: 12)),
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: item.utrNumber));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Copied UTR ${item.utrNumber} to clipboard! Search in NetBanking.'),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Accountant Audit Checklist:',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    CheckboxListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      value: bankCreditChecked,
-                      title: const Text('1. UTR matched in Bank Statement / UPI Merchant App', style: TextStyle(fontSize: 13)),
-                      subtitle: const Text('Found matching 12-digit transaction ID in HDFC / ICICI / SBI / Axis / PhonePe Business.', style: TextStyle(fontSize: 11)),
-                      onChanged: (val) => setDialogState(() => bankCreditChecked = val ?? false),
-                    ),
-                    CheckboxListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      value: amountMatchedChecked,
-                      title: Text('2. Credited Amount is exact ₹${item.detectedAmount.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13)),
-                      subtitle: const Text('Exact deposit credit received with zero deduction.', style: TextStyle(fontSize: 11)),
-                      onChanged: (val) => setDialogState(() => amountMatchedChecked = val ?? false),
-                    ),
-                    CheckboxListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      value: vpaChecked,
-                      title: const Text('3. Studio Payee Account Confirmed', style: TextStyle(fontSize: 13)),
-                      subtitle: const Text('Credit arrived in Makeovers by Prachi registered account/VPA.', style: TextStyle(fontSize: 11)),
-                      onChanged: (val) => setDialogState(() => vpaChecked = val ?? false),
-                    ),
-                    CheckboxListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      value: duplicateChecked,
-                      title: const Text('4. Zero Duplicate Claim Verified', style: TextStyle(fontSize: 13)),
-                      subtitle: const Text('This UTR has not been credited or submitted against any other booking.', style: TextStyle(fontSize: 11)),
-                      onChanged: (val) => setDialogState(() => duplicateChecked = val ?? false),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: allChecked ? Colors.green.shade800 : Colors.grey.shade400,
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.lock_clock, size: 16),
-                label: const Text('Certify Bank Credit & Lock Booking'),
-                onPressed: allChecked
-                    ? () {
-                        Navigator.pop(ctx);
-                        _approvePayment(item);
-                      }
-                    : null,
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _approvePayment(PaymentSubmissionItem item) async {
-    setState(() {
-      item.paymentStatus = 'VERIFIED';
-      item.isCalendarLocked = true;
-    });
-
-    // 1. Update real document in Cloud Firestore if available
-    if (item.docId != null && item.docId!.isNotEmpty) {
-      try {
-        await FirebaseFirestore.instance
-            .collection('bookings')
-            .doc(item.docId)
-            .update({
-          'status': 'CONFIRMED',
-          'payment.status': 'VERIFIED',
-          'commercials.depositPaid': item.detectedAmount,
-          'calendarLocked': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-      } catch (e) {
-        debugPrint('[PaymentVerification] Firestore update notice: $e');
-      }
-    }
-
-    // 2. Dispatch real event to live Vercel API
-    _apiService.triggerWhatsAppAction(
-      customerPhone: item.customerPhone,
-      templateName: 'PAYMENT_VERIFIED_CONFIRMED',
-      parameters: {
-        'bookingId': item.bookingId,
-        'customerName': item.customerName,
-        'amount': item.detectedAmount,
-      },
-    );
-
-    // 3. Dispatch FCM Push Notification & Timing Update to Customer
-    FirebaseMessagingService.instance.sendCustomerTimingReminder(
-      bookingId: item.bookingId,
-      customerName: item.customerName,
-      customerPhone: item.customerPhone,
-      eventDate: item.eventDate ?? DateTime.now().add(const Duration(days: 7)),
-      readyByTime: item.readyByTime ?? '16:00',
-      venue: item.venue,
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Payment for ${item.bookingId} VERIFIED! Cloud synced & Calendar LOCKED for ${item.customerName}.',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
-  void _showTimingReminderDialog(PaymentSubmissionItem item) {
-    final eventDate = item.eventDate ?? DateTime.now().add(const Duration(days: 1));
-    final readyTime = item.readyByTime ?? '16:00';
-    final info = FirebaseMessagingService.computeTimingInfo(
-      eventDate: eventDate,
-      readyByTime: readyTime,
-      customerName: item.customerName,
-      venue: item.venue,
-    );
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: AppColors.softRose,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.notifications_active, color: AppColors.deepPlum),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Send Event Timing Reminder',
-                style: AppTextStyles.headingTitle.copyWith(fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: info.timingType == 'TODAY'
-                    ? Colors.red.shade100
-                    : info.timingType == 'TOMORROW'
-                        ? Colors.amber.shade100
-                        : Colors.blue.shade100,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'STATUS: ${info.timingType} EVENT',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: info.timingType == 'TODAY'
-                      ? Colors.red.shade900
-                      : info.timingType == 'TOMORROW'
-                          ? Colors.amber.shade900
-                          : Colors.blue.shade900,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              info.title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              info.body,
-              style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.blushPink,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.send_to_mobile, size: 18, color: AppColors.deepPlum),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Dispatches live Push Notification to customer\'s device + WhatsApp automated reminder.',
-                      style: TextStyle(fontSize: 11, color: AppColors.deepPlum),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.deepPlum,
-              foregroundColor: Colors.white,
-            ),
-            icon: const Icon(Icons.send, size: 16),
-            label: const Text('Send Push & WhatsApp'),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final res = await FirebaseMessagingService.instance.sendCustomerTimingReminder(
-                bookingId: item.bookingId,
-                customerName: item.customerName,
-                customerPhone: item.customerPhone,
-                eventDate: eventDate,
-                readyByTime: readyTime,
-                venue: item.venue,
-              );
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Timing reminder sent to ${item.customerName}! (${res['timingType']})',
-                    ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _callCustomer(String phone, {String? customerName}) {
-    if (phone.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No phone number provided for this customer.')),
-      );
-      return;
-    }
-
-    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-    var rawDigits = cleanPhone.replaceAll('+', '').trim();
-    // In India, prefix 91 if customer provided 10 digits
-    if (rawDigits.length == 10) {
-      rawDigits = '91$rawDigits';
-    }
-    final whatsappPhone = rawDigits;
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Connect with Customer',
-                style: AppTextStyles.headingTitle,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${customerName ?? "Customer"} • $phone',
-                style: AppTextStyles.bodySecondary,
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.chat, color: Colors.green),
-                ),
-                title: const Text('WhatsApp Chat & Voice Call',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text(
-                    'Instant WhatsApp connect (Direct Web, Desktop & Mobile)'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  final uri = Uri.parse('https://wa.me/$whatsappPhone');
-                  try {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } catch (_) {
-                    try {
-                      await launchUrl(uri);
-                    } catch (e) {
-                      await Clipboard.setData(ClipboardData(text: phone));
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Copied $phone to clipboard!')),
-                        );
-                      }
-                    }
-                  }
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.phone, color: Colors.blue),
-                ),
-                title: const Text('Direct Phone Dialer',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Open mobile dialer / phone app'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  final uri = Uri.parse('tel:$cleanPhone');
-                  try {
-                    final launched = await launchUrl(uri);
-                    if (!launched) {
-                      await Clipboard.setData(ClipboardData(text: cleanPhone));
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Dialer not available on desktop. Copied $cleanPhone to clipboard!',
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                  } catch (_) {
-                    await Clipboard.setData(ClipboardData(text: cleanPhone));
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Copied $cleanPhone to clipboard!',
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.copy, color: AppColors.deepPlum),
-                ),
-                title: const Text('Copy Phone Number',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(phone),
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await Clipboard.setData(ClipboardData(text: cleanPhone));
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Copied $phone to clipboard!')),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _viewProof(PaymentSubmissionItem item) {
-    final rawUrl = item.proofUrl.trim();
-    final directImageUrl = _formatDriveImageUrl(rawUrl);
-    final isDrive = rawUrl.contains('drive.google.com') ||
-        rawUrl.contains('googleusercontent.com');
-
-    // Decode Base64 data URLs if uploaded as base64 string
-    final isBase64 = rawUrl.startsWith('data:image');
-    Uint8List? memoryBytes;
-    if (isBase64) {
-      try {
-        final commaIndex = rawUrl.indexOf(',');
-        final base64String = commaIndex != -1 ? rawUrl.substring(commaIndex + 1) : rawUrl;
-        memoryBytes = base64Decode(base64String.replaceAll(RegExp(r'\s+'), ''));
-      } catch (e) {
-        debugPrint('[AdminPaymentVerification] Base64 decode notice: $e');
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (_) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        clipBehavior: Clip.antiAlias,
-        backgroundColor: Colors.white,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 620,
-            maxHeight: MediaQuery.of(context).size.height * 0.88,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Top Bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Payment Proof Verification',
-                            style: AppTextStyles.headingTitle.copyWith(fontSize: 18),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Client: ${item.customerName} • UTR: ${item.utrNumber}',
-                            style: AppTextStyles.bodySecondary.copyWith(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-
-              // Scrollable Body
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // High-res Image Preview Frame
-                      Container(
-                        constraints: const BoxConstraints(minHeight: 280, maxHeight: 420),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF18181B),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.lightBorder),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: rawUrl.isEmpty
-                            ? const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(24.0),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.image_not_supported, size: 48, color: Colors.white54),
-                                      SizedBox(height: 10),
-                                      Text(
-                                        'No proof image submitted yet',
-                                        style: TextStyle(color: Colors.white70),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : (memoryBytes != null
-                                ? InteractiveViewer(
-                                    panEnabled: true,
-                                    minScale: 0.5,
-                                    maxScale: 4.0,
-                                    child: Center(
-                                      child: Image.memory(
-                                        memoryBytes,
-                                        fit: BoxFit.contain,
-                                      ),
-                                    ),
-                                  )
-                                : InteractiveViewer(
-                                    panEnabled: true,
-                                    minScale: 0.5,
-                                    maxScale: 4.0,
-                                    child: Center(
-                                      child: Image.network(
-                                        directImageUrl,
-                                        fit: BoxFit.contain,
-                                        loadingBuilder: (context, child, loadingProgress) {
-                                          if (loadingProgress == null) return child;
-                                          return Center(
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const CircularProgressIndicator(
-                                                  color: AppColors.roseGold,
-                                                ),
-                                                const SizedBox(height: 12),
-                                                Text(
-                                                  isDrive
-                                                      ? 'Fetching Google Drive Proof...'
-                                                      : 'Loading Payment Receipt...',
-                                                  style: const TextStyle(
-                                                    color: Colors.white70,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Center(
-                                            child: Padding(
-                                              padding: const EdgeInsets.all(20.0),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.receipt_long,
-                                                    size: 44,
-                                                    color: AppColors.roseGold,
-                                                  ),
-                                                  const SizedBox(height: 10),
-                                                  const Text(
-                                                    'Payment Receipt Uploaded',
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    'Ref: ${item.bookingId} • UTR: ${item.utrNumber}',
-                                                    style: const TextStyle(
-                                                      color: Colors.white70,
-                                                      fontSize: 11,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  ElevatedButton.icon(
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: AppColors.roseGold,
-                                                      foregroundColor: Colors.white,
-                                                    ),
-                                                    icon: const Icon(Icons.open_in_new, size: 16),
-                                                    label: const Text('Open Direct Image Link'),
-                                                    onPressed: () async {
-                                                      final uri = Uri.parse(rawUrl);
-                                                      try {
-                                                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                                      } catch (_) {
-                                                        await launchUrl(uri);
-                                                      }
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  )),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Verification Details Card
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.champagne.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.lightBorder),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Deposit Required:', style: TextStyle(fontSize: 12)),
-                                Text('₹${item.requiredAmount.toStringAsFixed(0)}',
-                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('UTR / Reference:', style: TextStyle(fontSize: 12)),
-                                SelectableText(
-                                  item.utrNumber,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'monospace',
-                                    color: AppColors.deepPlum,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (rawUrl.isNotEmpty && !isBase64) ...[
-                              const Divider(height: 16),
-                              Row(
-                                children: [
-                                  Icon(
-                                    isDrive ? Icons.add_to_drive : Icons.link,
-                                    size: 16,
-                                    color: AppColors.deepPlum,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      rawUrl,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 11, color: AppColors.deepPlum),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.open_in_new, size: 16),
-                                    tooltip: 'Open in new tab',
-                                    onPressed: () async {
-                                      final uri = Uri.parse(rawUrl);
-                                      try {
-                                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                                      } catch (_) {
-                                        await launchUrl(uri);
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Bottom Action Bar
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: AppColors.lightBorder)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Verified: ₹${item.detectedAmount.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: AppColors.deepPlum,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Close'),
-                        ),
-                        if (item.paymentStatus != 'VERIFIED') ...[
-                          const SizedBox(width: 8),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade800,
-                              foregroundColor: Colors.white,
-                            ),
-                            icon: const Icon(Icons.verified_user_outlined, size: 16),
-                            label: const Text('Verify in Bank & Lock'),
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _promptStep5BankReconciliation(item);
-                            },
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final idx = _selectedIndex.clamp(0, queue.length - 1);
+    _selectedIndex = idx;
+    _selectedId = queue[idx].id;
+    return queue[idx];
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.champagne,
-      appBar: AppBar(
-        backgroundColor: AppColors.deepPlum,
-        title: Text(
-          'UPI Payment Verification Queue',
-          style: AppTextStyles.headingTitle
-              .copyWith(color: AppColors.roseGold, fontSize: 16),
-        ),
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Human Review & Calendar Lock Surface',
-                            style: AppTextStyles.headingDisplay
-                                .copyWith(fontSize: 22),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Live Google Drive proof preview, UTR verification, and calendar locks.',
-                            style: AppTextStyles.bodySecondary,
-                          ),
-                        ],
+    final repos = context.read<AdminRepositories>();
+    return LiveStreamBuilder<List<BookingEntity>>(
+      create: repos.bookings.watchAwaitingVerification,
+      loading: (_) => const SkeletonList(itemHeight: 120),
+      builder: (context, queue) {
+        return LayoutBuilder(
+          builder: (context, c) {
+            final pad = c.maxWidth >= 600 ? 28.0 : 16.0;
+            final wide = c.maxWidth >= 980;
+            if (queue.isEmpty) {
+              return const _AllClear();
+            }
+            if (!wide) {
+              return _QueueList(
+                queue: queue,
+                padding: EdgeInsets.fromLTRB(pad, 4, pad, 28),
+                onOpen: (b) => _openReviewPage(context, b),
+              );
+            }
+            final current = _resolveSelected(queue)!;
+            return Padding(
+              padding: EdgeInsets.fromLTRB(pad, 0, pad, 20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 340,
+                    child: _QueueList(
+                      queue: queue,
+                      selectedId: current.id,
+                      compact: true,
+                      padding: const EdgeInsets.only(top: 4, bottom: 20),
+                      onOpen: (b) => setState(() {
+                        _selectedId = b.id;
+                        _selectedIndex = queue.indexOf(b);
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: AppCard(
+                        padding: EdgeInsets.zero,
+                        color: const Color(0xFFFDFBF8),
+                        child: _AnimatedReview(
+                          booking: current,
+                          position: queue.indexOf(current) + 1,
+                          total: queue.length,
+                        ),
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _openReviewPage(BuildContext context, BookingEntity b) {
+    tapHaptic();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            withAdminProviders(context, _PaymentReviewPage(initialId: b.id)),
+      ),
+    );
+  }
+}
+
+class _AllClear extends StatelessWidget {
+  const _AllClear();
+  @override
+  Widget build(BuildContext context) => const EmptyState(
+    icon: Icons.verified_rounded,
+    title: 'All payments verified',
+    message:
+        'New UPI payment proofs from the website land here for your review.',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Queue list
+// ---------------------------------------------------------------------------
+
+class _QueueList extends StatelessWidget {
+  final List<BookingEntity> queue;
+  final String? selectedId;
+  final bool compact;
+  final EdgeInsetsGeometry padding;
+  final ValueChanged<BookingEntity> onOpen;
+
+  const _QueueList({
+    required this.queue,
+    required this.onOpen,
+    required this.padding,
+    this.selectedId,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            left: compact ? 0 : padding.horizontal / 2,
+            right: compact ? 0 : padding.horizontal / 2,
+            bottom: 6,
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
                 ),
-                const SizedBox(height: 20),
+                decoration: BoxDecoration(
+                  color: StatusColors.awaitingVerification.withValues(
+                    alpha: 0.12,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${queue.length} to review',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: const Color(0xFF8A560A),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Oldest submission first',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            color: BrandColors.plum,
+            onRefresh: () => Future.delayed(const Duration(milliseconds: 600)),
+            child: DiffAnimatedList<BookingEntity>(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: padding.resolve(TextDirection.ltr).copyWith(top: 6),
+              items: queue,
+              idOf: (b) => b.id,
+              itemBuilder: (context, b, i) => FadeSlideIn(
+                index: i,
+                child: _QueueCard(
+                  booking: b,
+                  selected: b.id == selectedId,
+                  compact: compact,
+                  onTap: () => onOpen(b),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
-                // Live Firestore Stream with Fallback
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('bookings')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    List<PaymentSubmissionItem> submissions = [];
+class _QueueCard extends StatelessWidget {
+  final BookingEntity booking;
+  final bool selected;
+  final bool compact;
+  final VoidCallback onTap;
+  const _QueueCard({
+    required this.booking,
+    required this.selected,
+    required this.compact,
+    required this.onTap,
+  });
 
-                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-                      submissions = snapshot.data!.docs
-                          .map((doc) => PaymentSubmissionItem.fromFirestore(doc))
-                          .where((item) => item.proofUrl.isNotEmpty || item.utrNumber != 'N/A')
-                          .toList();
-                    }
-
-                    // Fallback to sample items if no proof bookings yet in Firestore
-                    if (submissions.isEmpty) {
-                      submissions = _fallbackSubmissions;
-                    }
-
-                    return ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: submissions.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final item = submissions[index];
-                        return _buildPaymentCard(item);
-                      },
-                    );
-                  },
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final b = booking;
+    return AnimatedContainer(
+      duration: motion(context, const Duration(milliseconds: 200)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppTheme.radius + 2),
+        border: Border.all(
+          color: selected ? BrandColors.plum : Colors.transparent,
+          width: 1.5,
+        ),
+      ),
+      child: AppCard(
+        semanticLabel: 'Review payment ${b.id} ${displayName(b)}',
+        shadow: !selected,
+        onTap: onTap,
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                InitialsAvatar(name: b.customer.fullName, size: 42),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName(b),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                      Text(
+                        'Submitted ${timeAgo(b.payment.submittedAt)}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      formatInr(b.commercials.depositRequired),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text('deposit', style: theme.textTheme.bodySmall),
+                  ],
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Flexible(
+                  child: MetaChip(
+                    icon: Icons.calendar_today_rounded,
+                    label: formatDateKeyShort(b.event.dateKey),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: MetaChip(
+                    icon: Icons.tag_rounded,
+                    label: b.payment.utrNumber == null
+                        ? 'No UTR'
+                        : 'UTR …${_tail(b.payment.utrNumber!)}',
+                  ),
+                ),
+                if (!compact) ...[
+                  const Spacer(),
+                  Text(
+                    'Review',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: BrandColors.plum,
+                    ),
+                  ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: BrandColors.plum,
+                    size: 20,
+                  ),
+                ],
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildPaymentCard(PaymentSubmissionItem item) {
-    final hasProof = item.proofUrl.isNotEmpty;
-    final isDrive = item.proofUrl.contains('drive.google.com') ||
-        item.proofUrl.contains('googleusercontent.com');
+  static String _tail(String s) =>
+      s.length <= 4 ? s : s.substring(s.length - 4);
+}
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: item.paymentStatus == 'VERIFIED'
-              ? Colors.green
-              : AppColors.lightBorder,
+// ---------------------------------------------------------------------------
+// Review
+// ---------------------------------------------------------------------------
+
+/// Cross-fades/slides between bookings as the selection moves on.
+class _AnimatedReview extends StatelessWidget {
+  final BookingEntity booking;
+  final int position;
+  final int total;
+  const _AnimatedReview({
+    required this.booking,
+    required this.position,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: motion(context, const Duration(milliseconds: 380)),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: SlideTransition(
+          position: Tween(
+            begin: const Offset(0.04, 0),
+            end: Offset.zero,
+          ).animate(anim),
+          child: child,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'Ref: ${item.bookingId}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.sectionHeader,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
+      child: PaymentReview(
+        key: ValueKey(booking.id),
+        booking: booking,
+        position: position,
+        total: total,
+      ),
+    );
+  }
+}
+
+/// Review of one payment: proof, UTR, amounts, client & event, actions.
+class PaymentReview extends StatefulWidget {
+  final BookingEntity booking;
+  final int position;
+  final int total;
+  final bool showHeaderCounter;
+  const PaymentReview({
+    super.key,
+    required this.booking,
+    required this.position,
+    required this.total,
+    this.showHeaderCounter = true,
+  });
+
+  @override
+  State<PaymentReview> createState() => _PaymentReviewState();
+}
+
+class _PaymentReviewState extends State<PaymentReview> {
+  bool _busy = false;
+
+  Future<void> _run(Future<bool> Function() action) async {
+    setState(() => _busy = true);
+    await action();
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final b = widget.booking;
+    final theme = Theme.of(context);
+    final repos = context.read<AdminRepositories>();
+    final session = context.read<AdminSession>();
+
+    return LayoutBuilder(
+      builder: (context, c) {
+        final twoCol = c.maxWidth >= 640;
+        final hp = c.maxWidth >= 600 ? 24.0 : 16.0;
+
+        final header = Row(
+          children: [
+            InitialsAvatar(name: b.customer.fullName, size: 48),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (hasProof)
-                    Chip(
-                      avatar: Icon(
-                        isDrive ? Icons.add_to_drive : Icons.image,
-                        size: 14,
-                        color: Colors.blue.shade900,
-                      ),
-                      label: Text(
-                        isDrive ? 'Drive Proof Attached' : 'Proof Attached',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade900,
-                        ),
-                      ),
-                      backgroundColor: Colors.blue.shade50,
-                      padding: EdgeInsets.zero,
-                    ),
-                  Chip(
-                    label: Text(
-                      item.paymentStatus == 'VERIFIED'
-                          ? 'VERIFIED'
-                          : 'NEEDS REVIEW',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: item.paymentStatus == 'VERIFIED'
-                            ? Colors.green.shade900
-                            : Colors.orange.shade900,
-                      ),
-                    ),
-                    backgroundColor: item.paymentStatus == 'VERIFIED'
-                        ? Colors.green.shade100
-                        : Colors.orange.shade100,
-                    padding: EdgeInsets.zero,
+                  Text(
+                    displayName(b),
+                    style: AppTheme.serif(size: 22),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${b.id} · submitted ${formatDateTime(b.payment.submittedAt)}',
+                    style: theme.textTheme.bodySmall,
                   ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          Wrap(
-            spacing: 24,
-            runSpacing: 8,
-            children: [
+            ),
+            if (widget.showHeaderCounter && widget.total > 1)
               Text(
-                'Customer: ${item.customerName}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+                '${widget.position} of ${widget.total}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: BrandColors.muted,
+                ),
               ),
-              Text('Phone: ${item.customerPhone}'),
-              Text('UTR: ${item.utrNumber}'),
-            ],
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'Full booking details',
+              onPressed: () => showBookingDetailSheet(context, b.id),
+              icon: const Icon(Icons.open_in_new_rounded, size: 20),
+            ),
+          ],
+        );
+
+        final proof = PaymentProofImage(
+          proofPath: b.payment.proofPath,
+          resolveUrl: repos.proofDownloadUrl,
+          height: twoCol ? 470 : 300,
+        );
+
+        final details = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _AmountCheck(booking: b),
+            const SizedBox(height: 12),
+            _UtrCard(utr: b.payment.utrNumber),
+            const SizedBox(height: 12),
+            DetailSection(
+              title: 'Client & event',
+              icon: Icons.event_outlined,
+              children: [
+                InfoRow('Service', b.serviceTitle),
+                InfoRow(
+                  'Event date',
+                  '${formatDateKey(b.event.dateKey)} · ${relativeDayLabel(b.event.dateKey)}',
+                ),
+                InfoRow('Ready by', formatReadyTime(b.event.readyByTime)),
+                InfoRow(
+                  'Venue',
+                  [
+                    b.event.venueLocation,
+                    b.event.city,
+                  ].where((s) => s.isNotEmpty).join(', '),
+                ),
+                InfoRow('Phone', b.customer.phone, copyable: true),
+                InfoRow(
+                  'Paid to',
+                  '${b.payment.upiId}  ${b.payment.payeeName}'.trim(),
+                ),
+              ],
+            ),
+          ],
+        );
+
+        final actions = Container(
+          padding: EdgeInsets.fromLTRB(hp, 12, hp, 12),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: BrandColors.outline)),
           ),
-
-          const SizedBox(height: 8),
-
-          Wrap(
-            spacing: 24,
-            runSpacing: 8,
-            children: [
-              Text('Required Deposit: ₹${item.requiredAmount.toStringAsFixed(0)}'),
-              Text(
-                'Detected / Paid: ₹${item.detectedAmount.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.deepPlum,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _viewProof(item),
-                icon: Icon(
-                  isDrive ? Icons.add_to_drive : Icons.remove_red_eye_outlined,
-                  size: 16,
-                  color: isDrive ? Colors.blue.shade800 : AppColors.deepPlum,
-                ),
-                label: Text(isDrive ? 'View Drive Proof' : 'View Proof Screenshot'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _callCustomer(item.customerPhone,
-                    customerName: item.customerName),
-                icon: const Icon(Icons.phone_in_talk, size: 16),
-                label: const Text('Call Customer'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.deepPlum,
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _showTimingReminderDialog(item),
-                icon: const Icon(Icons.notifications_active_outlined, size: 16),
-                label: const Text('Send Timing Reminder'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.deepPlum,
-                ),
-              ),
-              if (item.paymentStatus != 'VERIFIED')
-                ElevatedButton.icon(
-                  onPressed: () => _promptStep5BankReconciliation(item),
-                  icon: const Icon(Icons.verified_user_outlined, size: 16),
-                  label: const Text('Verify in Bank & Lock'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade800,
-                    foregroundColor: Colors.white,
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.lock, color: Colors.green, size: 16),
-                      SizedBox(width: 6),
-                      Text(
-                        'CALENDAR LOCKED',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+          child: SafeArea(
+            top: false,
+            child: AnimatedSwitcher(
+              duration: motion(context, const Duration(milliseconds: 200)),
+              child: _busy
+                  ? const SizedBox(
+                      key: ValueKey('busy'),
+                      height: 52,
+                      child: Center(
+                        child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 2.4),
                         ),
                       ),
-                    ],
+                    )
+                  : Row(
+                      key: const ValueKey('actions'),
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 52),
+                              foregroundColor: theme.colorScheme.error,
+                              side: BorderSide(
+                                color: theme.colorScheme.error.withValues(
+                                  alpha: 0.4,
+                                ),
+                              ),
+                            ),
+                            onPressed: () => _run(
+                              () => rejectPaymentFlow(context, repos, b),
+                            ),
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            label: const Text('Reject'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 3,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(0, 52),
+                            ),
+                            onPressed: () => _run(
+                              () => approvePaymentFlow(
+                                context,
+                                repos,
+                                session,
+                                b,
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.verified_rounded,
+                              size: 20,
+                              color: BrandColors.goldBright,
+                            ),
+                            label: const Text('Approve'),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        );
+
+        return Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(hp, 20, hp, 24),
+                children: [
+                  header,
+                  const SizedBox(height: 18),
+                  if (twoCol)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 5, child: proof),
+                        const SizedBox(width: 18),
+                        Expanded(flex: 6, child: details),
+                      ],
+                    )
+                  else ...[
+                    proof,
+                    const SizedBox(height: 14),
+                    details,
+                  ],
+                ],
+              ),
+            ),
+            actions,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AmountCheck extends StatelessWidget {
+  final BookingEntity booking;
+  const _AmountCheck({required this.booking});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final c = booking.commercials;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [BrandColors.goldSoft, Colors.white],
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radius),
+        border: Border.all(color: const Color(0xFFEBD9B4)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'EXPECTED DEPOSIT',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: BrandColors.gold,
+                    letterSpacing: 1.2,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatInr(c.depositRequired),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontFamily: theme.textTheme.titleLarge?.fontFamily,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 26,
+                  ),
+                ),
+                Text(
+                  'Check this amount on the screenshot',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Container(width: 1, height: 56, color: const Color(0xFFEBD9B4)),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('Booking total', style: theme.textTheme.bodySmall),
+              Text(
+                formatInr(c.totalAmount),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (c.travelFee > 0)
+                Text(
+                  'incl. ${formatInr(c.travelFee)} travel',
+                  style: theme.textTheme.bodySmall,
                 ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _UtrCard extends StatelessWidget {
+  final String? utr;
+  const _UtrCard({required this.utr});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final has = utr != null && utr!.isNotEmpty;
+    return AppCard(
+      shadow: false,
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      child: Row(
+        children: [
+          const IconTile(icon: Icons.tag_rounded, size: 38, iconSize: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'UTR / reference number',
+                  style: theme.textTheme.bodySmall,
+                ),
+                SelectableText(
+                  has ? _group(utr!) : 'Not provided',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (has)
+            TextButton.icon(
+              onPressed: () => copyToClipboard(context, utr!, label: 'UTR'),
+              icon: const Icon(Icons.copy_rounded, size: 16),
+              label: const Text('Copy'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static String _group(String s) {
+    final b = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && i % 4 == 0) b.write(' ');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phone: full-screen review that walks through the queue
+// ---------------------------------------------------------------------------
+
+class _PaymentReviewPage extends StatefulWidget {
+  final String initialId;
+  const _PaymentReviewPage({required this.initialId});
+
+  @override
+  State<_PaymentReviewPage> createState() => _PaymentReviewPageState();
+}
+
+class _PaymentReviewPageState extends State<_PaymentReviewPage> {
+  late String _currentId = widget.initialId;
+  int _index = 0;
+  StreamSubscription<List<BookingEntity>>? _sub;
+  List<BookingEntity>? _queue;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = context
+        .read<AdminRepositories>()
+        .bookings
+        .watchAwaitingVerification()
+        .listen(
+          (q) => setState(() {
+            _queue = q;
+            _error = null;
+          }),
+          onError: (Object e) => setState(() => _error = e),
+        );
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  void _step(int delta, List<BookingEntity> q) {
+    final next = (_index + delta).clamp(0, q.length - 1);
+    tapHaptic();
+    setState(() {
+      _index = next;
+      _currentId = q[next].id;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _queue;
+    BookingEntity? current;
+    if (q != null && q.isNotEmpty) {
+      final i = q.indexWhere((b) => b.id == _currentId);
+      if (i >= 0) {
+        _index = i;
+      } else {
+        _index = _index.clamp(0, q.length - 1);
+        _currentId = q[_index].id;
+      }
+      current = q[_index];
+    }
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: BrandColors.ivory,
+      appBar: AppBar(
+        title: Text('Review payment', style: AppTheme.serif(size: 22)),
+        actions: [
+          if (q != null && q.length > 1) ...[
+            IconButton(
+              tooltip: 'Previous',
+              onPressed: _index > 0 ? () => _step(-1, q) : null,
+              icon: const Icon(Icons.chevron_left_rounded),
+            ),
+            Text(
+              '${_index + 1}/${q.length}',
+              style: theme.textTheme.labelLarge,
+            ),
+            IconButton(
+              tooltip: 'Next',
+              onPressed: _index < q.length - 1 ? () => _step(1, q) : null,
+              icon: const Icon(Icons.chevron_right_rounded),
+            ),
+          ],
+          const SizedBox(width: 4),
+        ],
+        bottom: q == null || q.isEmpty
+            ? null
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(3),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(end: (_index + 1) / q.length),
+                  duration: motion(context, const Duration(milliseconds: 300)),
+                  builder: (_, v, _) => LinearProgressIndicator(
+                    value: v,
+                    minHeight: 3,
+                    color: BrandColors.gold,
+                  ),
+                ),
+              ),
+      ),
+      body: _error != null
+          ? ErrorView(error: _error!)
+          : q == null
+          ? const SkeletonList(count: 3, itemHeight: 160)
+          : current == null
+          ? EmptyState(
+              icon: Icons.verified_rounded,
+              title: 'All caught up',
+              message: 'Every payment in the queue has been reviewed.',
+              action: FilledButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Back to payments'),
+              ),
+            )
+          : _AnimatedReview(
+              booking: current,
+              position: _index + 1,
+              total: q.length,
+            ),
     );
   }
 }

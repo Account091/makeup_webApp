@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import Header from "../../components/Header";
 import { AdminAiCopilot } from "../../components/ai/AdminAiCopilot";
 
 export default function AdminCopilotPage() {
@@ -17,7 +16,6 @@ export default function AdminCopilotPage() {
         flexDirection: "column",
       }}
     >
-      <Header />
       <main
         style={{
           flex: 1,

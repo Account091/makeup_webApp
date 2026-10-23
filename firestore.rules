@@ -47,17 +47,30 @@ service cloud.firestore {
     // 1. Bookings Collection Security
     // Client direct writes are strictly disabled to eliminate pricing tampering and spam.
     // All inquiries and bookings must originate via authenticated server APIs / Cloud Functions with App Check.
+    // Customers never touch bookings directly: the website's API routes use the
+    // Admin SDK (see docs/BOOKING_CONTRACT.md). Staff read/manage from the admin app.
     match /bookings/{bookingId} {
-      allow read: if isAccountant() || (isAuthenticated() && (
-        resource.data.customerDetails.email == request.auth.token.email ||
-        resource.data.customerDetails.phone == request.auth.token.phone_number ||
-        resource.data.orgId == request.auth.token.orgId
-      ));
-      // Direct client creation disabled; handled exclusively via Server Admin SDK
-      allow create: if isAdmin();
-      // Updates are strictly admin-controlled or handled via Cloud Functions Admin SDK
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if isAccountant();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() && request.resource.data.bookingId == resource.data.bookingId;
+    }
+
+    // One bridal booking per date: HOLD / BOOKED / BLOCKED. Public read for availability.
+    match /calendar/{date} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Server-only UTR de-duplication index.
+    match /paymentUtrIndex/{utr} {
+      allow read: if isAccountant();
+      allow write: if false;
+    }
+
+    // Admin inbox. Written by the server; staff read and mark as read.
+    match /notifications/{notificationId} {
+      allow read, update: if isAdmin();
+      allow create, delete: if false;
     }
 
     // 2. Services & Packages (Public Read, Admin Write)
@@ -95,7 +108,7 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
     match /reviews/{reviewId} {
-      allow read: if resource.data.status == 'Approved';
+      allow read: if resource.data.get('approved', false) == true || resource.data.get('status', '') == 'Approved' || isAdmin();
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }

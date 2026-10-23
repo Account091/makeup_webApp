@@ -1,190 +1,205 @@
 import { NextResponse } from "next/server";
-import { db } from "../../../../lib/firebase";
-import { collection, query, where, getDocs, getDoc, setDoc, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminBucket, adminDb } from "../../../../lib/firebase-admin";
+import { clientIp, expireBooking, isHoldActive, jsonError, rateLimit, REVIEW_HOLD_EXTENSION_MS } from "../../../../lib/booking/server";
+import { BOOKING_ID_PATTERN, normalizeBookingId, normalizePhone } from "../../../../lib/booking/types";
 import { mirrorPaymentProofSubmitted } from "../../../../lib/financial/sheets-payment-mirror-engine";
 
-async function uploadToImageCdn(base64DataUrl: string): Promise<string | null> {
-  try {
-    const rawBase64 = base64DataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
-    const formData = new URLSearchParams();
-    formData.append("key", "6d207e02198a847aa98d0a2a901485a5");
-    formData.append("action", "upload");
-    formData.append("source", rawBase64);
-    formData.append("format", "json");
+export const dynamic = "force-dynamic";
 
-    const res = await fetch("https://freeimage.host/api/1/upload", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-    return data?.image?.url || data?.image?.display_url || null;
-  } catch (err) {
-    console.warn("[Image CDN] Upload notice:", err);
-    return null;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const NOT_FOUND = "No booking found with that ID and phone number.";
+
+class HttpError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
   }
 }
 
+function safeFileName(name: string, contentType: string): string {
+  const ext = (contentType.split("/")[1] || "img").replace(/[^a-z0-9]/gi, "").slice(0, 5) || "img";
+  const base = (name || "")
+    .replace(/\.[^.]*$/, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50);
+  return `${base || "payment-proof"}.${ext}`;
+}
+
 export async function POST(req: Request) {
+  if (!rateLimit(`proof:${clientIp(req)}`, 10, 10 * 60 * 1000)) {
+    return jsonError("Too many attempts. Please wait a few minutes and try again.", 429);
+  }
+
+  let form: FormData;
   try {
-    const body = await req.json();
-    const { bookingId, utrNumber, paymentProofName, paymentProofUrl } = body;
+    form = await req.formData();
+  } catch {
+    return jsonError("Please upload the payment screenshot using the form.", 400);
+  }
 
-    console.log(`[submit-proof] Received submission for #${bookingId}: name='${paymentProofName}', urlLength=${paymentProofUrl ? paymentProofUrl.length : 0}, utr='${utrNumber}'`);
+  const bookingId = normalizeBookingId(form.get("bookingId"));
+  const phone = normalizePhone(form.get("phone"));
+  const utrRaw = String(form.get("utrNumber") || "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  const file = form.get("file");
 
-    if (!bookingId) {
-      return NextResponse.json({ error: "Missing Booking Ref ID" }, { status: 400 });
-    }
+  if (!BOOKING_ID_PATTERN.test(bookingId) || !phone) return jsonError(NOT_FOUND, 404);
+  // UPI references are normally 12 digits; accept 10-22 alphanumerics to be lenient with other apps.
+  if (!/^[A-Z0-9]{10,22}$/.test(utrRaw)) {
+    return jsonError("Please enter the 12-digit UPI reference (UTR) number from your payment app.", 400);
+  }
+  if (!file || typeof file === "string" || typeof (file as Blob).arrayBuffer !== "function") {
+    return jsonError("Please attach a screenshot of your payment.", 400);
+  }
+  const blob = file as File;
+  const contentType = (blob.type || "").toLowerCase();
+  if (!contentType.startsWith("image/")) return jsonError("The payment proof must be an image (JPG, PNG or similar).", 400);
+  if (blob.size === 0) return jsonError("The screenshot file is empty. Please choose it again.", 400);
+  if (blob.size > MAX_FILE_BYTES) return jsonError("The screenshot is larger than 5 MB. Please upload a smaller image.", 400);
 
-    const cleanUtr = (utrNumber || "").trim().replaceAll(/\s+/g, "");
-
-    // 1. Transaction-Safe Deterministic UTR Uniqueness Indexing (paymentUtrIndex/{utrHash})
-    if (cleanUtr && cleanUtr !== "N/A") {
-      const utrDocKey = `UTR_${cleanUtr.toUpperCase()}`;
-      const utrRef = doc(db, "paymentUtrIndex", utrDocKey);
-      const utrSnap = await getDoc(utrRef);
-
-      if (utrSnap.exists() && utrSnap.data().bookingId !== bookingId) {
-        return NextResponse.json(
-          { error: `UTR number '${cleanUtr}' has already been submitted for booking #${utrSnap.data().bookingId}.` },
-          { status: 409 }
-        );
-      }
-
-      // Reserve deterministic UTR document key
-      await setDoc(utrRef, {
-        utrNumber: cleanUtr,
-        bookingId,
-        submittedAt: new Date().toISOString(),
-        status: "VERIFICATION_PENDING",
-      });
-    }
-
-    // 2. Query Firestore Source of Truth for session
-    const q = query(collection(db, "bookings"), where("bookingId", "==", bookingId));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      return NextResponse.json({ error: "Booking session not found" }, { status: 404 });
-    }
-
-    const bookingDoc = querySnapshot.docs[0];
-    const bookingData = bookingDoc.data();
-
-    // 3. Server-side Expiry Enforcement
-    const expiresAtMs = new Date(bookingData.expiresAt).getTime();
+  try {
+    const db = adminDb();
+    const bookingRef = db.doc(`bookings/${bookingId}`);
     const nowMs = Date.now();
 
-    if (nowMs > expiresAtMs) {
-      await updateDoc(doc(db, "bookings", bookingDoc.id), {
-        status: "EXPIRED",
-        "payment.status": "EXPIRED",
-      });
-      return NextResponse.json(
-        { error: "7-Minute payment reservation window (420s) has expired. Please restart the booking session." },
-        { status: 410 }
+    // ---- 1. Validate the booking before touching the UTR index or Storage ----
+    const snap = await bookingRef.get();
+    const booking = snap.data();
+    if (!snap.exists || !booking || booking.customerDetails?.phone !== phone) return jsonError(NOT_FOUND, 404);
+
+    if (booking.status === "PAYMENT_PROOF_SUBMITTED") {
+      return jsonError("We've already received your payment proof. We'll confirm your booking after verification.", 409);
+    }
+    if (booking.status !== "DEPOSIT_PENDING") {
+      if (booking.status === "EXPIRED") return jsonError("This booking hold has expired. Please start a new booking.", 410);
+      return jsonError("This booking is no longer waiting for a payment.", 409);
+    }
+    const expiresMs = Date.parse(booking.expiresAt || "");
+    if (!Number.isFinite(expiresMs) || expiresMs <= nowMs) {
+      await expireBooking(bookingId).catch((e) => console.warn("[submit-proof] lazy expiry failed:", e));
+      return jsonError(
+        "Sorry, the time to pay for this booking ran out and the date was released. Please start a new booking.",
+        410
       );
     }
 
-    const proofSubmittedAtIso = new Date().toISOString();
-
-    // Upload base64 image to public CDN so Google Sheets can embed it visually!
-    let publicImageUrl: string | null = null;
-    if (paymentProofUrl && paymentProofUrl.startsWith("data:image")) {
-      console.log(`[submit-proof] Uploading screenshot to Image CDN...`);
-      publicImageUrl = await uploadToImageCdn(paymentProofUrl);
-      console.log(`[submit-proof] CDN Image URL: ${publicImageUrl}`);
-    }
-
-    const proofFileRef = publicImageUrl || paymentProofUrl || `gs://makeoversbyprachi.appspot.com/payment_proofs/${paymentProofName || "uploaded_screenshot.png"}`;
-
-    // 4. Server-authoritative update in Firestore
-    await updateDoc(doc(db, "bookings", bookingDoc.id), {
-      status: "PAYMENT_PROOF_SUBMITTED",
-      "payment.utrNumber": cleanUtr || "N/A",
-      "payment.proofFileName": paymentProofName || "uploaded_screenshot.png",
-      "payment.proofFileRef": proofFileRef,
-      "payment.proofUrl": publicImageUrl || proofFileRef,
-      "payment.status": "VERIFICATION_PENDING",
-      submittedAt: proofSubmittedAtIso,
+    // ---- 2. Upload the screenshot ----
+    const proofPath = `payment_proofs/${bookingId}/${nowMs}-${safeFileName(blob.name, contentType)}`;
+    const bucket = adminBucket();
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    await bucket.file(proofPath).save(buffer, {
+      resumable: false,
+      contentType,
+      metadata: { contentType, metadata: { bookingId, utrNumber: utrRaw } },
     });
 
-    // 5. Dual-Sheet Operational Mirror Dispatch to Google Sheets (Payments & PaymentEvents)
-    mirrorPaymentProofSubmitted({
+    // ---- 3. Atomically: claim UTR, update booking, extend calendar hold, notify admin ----
+    const utrRef = db.doc(`paymentUtrIndex/${utrRaw}`);
+    const calRef = db.doc(`calendar/${booking.event?.date}`);
+    try {
+      await db.runTransaction(async (tx) => {
+        const [bSnap, utrSnap, calSnap] = await Promise.all([tx.get(bookingRef), tx.get(utrRef), tx.get(calRef)]);
+        const b = bSnap.data();
+        if (!b || b.status !== "DEPOSIT_PENDING") {
+          throw new HttpError(409, "This booking is no longer waiting for a payment.");
+        }
+        if (Date.parse(b.expiresAt || "") <= Date.now()) {
+          throw new HttpError(410, "Sorry, the time to pay for this booking ran out. Please start a new booking.");
+        }
+        if (utrSnap.exists && utrSnap.data()?.bookingId !== bookingId) {
+          throw new HttpError(409, "This UPI reference number has already been used for another booking. Please check it and try again.");
+        }
+
+        tx.set(utrRef, {
+          utrNumber: utrRaw,
+          bookingId,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+
+        tx.update(bookingRef, {
+          status: "PAYMENT_PROOF_SUBMITTED",
+          "payment.status": "VERIFICATION_PENDING",
+          "payment.utrNumber": utrRaw,
+          "payment.proofPath": proofPath,
+          "payment.submittedAt": FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        // Keep the date held while the studio reviews the proof. The original
+        // hold is only `holdMinutes` long; we extend the calendar HOLD by 30 days so
+        // nobody else can grab the date before admin approves (-> BOOKED) or
+        // rejects (-> freed). The admin app shows the pending proof until then;
+        // the long window only guards against a forgotten review.
+        const cal = calSnap.data() as { status?: string; bookingId?: string; expiresAt?: string } | undefined;
+        const extendedIso = new Date(Date.now() + REVIEW_HOLD_EXTENSION_MS).toISOString();
+        if (!cal || (cal.status === "HOLD" && (cal.bookingId === bookingId || !isHoldActive(cal)))) {
+          tx.set(calRef, {
+            status: "HOLD",
+            bookingId,
+            expiresAt: extendedIso,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        tx.create(db.collection("notifications").doc(), {
+          title: `Payment proof received: ${b.customerDetails?.fullName || "Customer"}`,
+          body: `${bookingId} · UTR ${utrRaw} · deposit ₹${Number(b.commercials?.depositRequired || 0).toLocaleString("en-IN")}. Please verify.`,
+          category: "PAYMENT",
+          bookingId,
+          isUnread: true,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      });
+    } catch (txErr) {
+      // Don't leave orphaned screenshots behind if the booking update failed.
+      await bucket.file(proofPath).delete({ ignoreNotFound: true }).catch(() => undefined);
+      throw txErr;
+    }
+
+    // Optional operational mirror; no-op unless GOOGLE_SHEETS_SCRIPT_URL is set; never blocks.
+    void mirrorPaymentProofSubmitted({
       sessionRecord: {
         paymentSessionId: `psess_${bookingId}`,
         bookingId,
-        customerId: bookingData.customerDetails?.email || bookingData.customerDetails?.phone || "GUEST",
-        customerName: bookingData.customerDetails?.fullName || "Guest Customer",
-        customerPhone: bookingData.customerDetails?.phone || "N/A",
-        customerEmail: bookingData.customerDetails?.email || "guest@makeoversbyprachi.com",
-        organizationId: "org_default",
-        serviceId: bookingData.serviceTitle || "Signature Royal Bridal Makeover",
-        serviceName: bookingData.serviceTitle || "Signature Royal Bridal Makeover",
-        packageName: bookingData.packageName || "Royal Rajasthani Poshak & Jewelry Package",
-        venue: bookingData.event?.venue || "Gorbandh Palace",
-        city: bookingData.event?.city || "Jodhpur",
-        location: `${bookingData.event?.venue || "Venue"}, ${bookingData.event?.city || "Jodhpur"}`.trim(),
-        eventDate: bookingData.event?.date || "2026-11-20",
-        eventTime: bookingData.event?.readyByTime || "16:00",
-        guestCount: Number(bookingData.event?.guestCount) || 1,
-        totalAmount: bookingData.commercials?.totalAmount || 25000,
-        requiredDeposit: bookingData.commercials?.depositRequired || 7500,
-        remainingBalance: (bookingData.commercials?.totalAmount || 25000) - (bookingData.commercials?.depositRequired || 7500),
+        customerId: phone,
+        customerName: booking.customerDetails?.fullName || "",
+        customerPhone: phone,
+        customerEmail: booking.customerDetails?.email || "",
+        organizationId: "makeovers_by_prachi",
+        serviceId: booking.serviceId || "",
+        serviceName: booking.serviceTitle || "",
+        packageName: booking.packageName || "",
+        venue: booking.event?.venue || "",
+        city: booking.event?.city || "",
+        location: booking.event?.city || "",
+        eventDate: booking.event?.date || "",
+        eventTime: booking.event?.readyByTime || "",
+        guestCount: Number(booking.event?.guestCount) || 1,
+        totalAmount: booking.commercials?.totalAmount,
+        requiredDeposit: booking.commercials?.depositRequired,
+        remainingBalance: (booking.commercials?.totalAmount || 0) - (booking.commercials?.depositRequired || 0),
         bookingStatus: "PAYMENT_PROOF_SUBMITTED",
         currency: "INR",
-        upiVpa: "bhawanisanker1967@okaxis",
+        upiVpa: booking.payment?.upiId || "",
         paymentMethod: "UPI_QR",
-        qrType: "STATIC_UPI",
-        paymentSessionCreatedAt: bookingData.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-        paymentSessionExpiresAt: bookingData.expiresAt || new Date().toISOString(),
+        qrType: "DYNAMIC_UPI_INTENT",
+        paymentSessionCreatedAt: booking.createdAt?.toDate?.()?.toISOString() || "",
+        paymentSessionExpiresAt: booking.expiresAt || "",
         paymentSessionStatus: "PROOF_SUBMITTED",
-        proofSubmittedAt: proofSubmittedAtIso,
-        proofFileReference: proofFileRef,
-        proofFileName: paymentProofName || "uploaded_screenshot.png",
-        aiStatus: "SUCCESS",
-        aiAmount: bookingData.commercials?.depositRequired || 7500,
-        aiUtr: cleanUtr || "N/A",
-        aiPayee: "bhawanisanker1967@okaxis",
-        aiConfidence: 0.95,
-        serverAmountCheck: true,
-        serverUtrCheck: true,
-        serverPayeeCheck: true,
-        serverExpiryCheck: true,
+        proofSubmittedAt: new Date().toISOString(),
+        proofFileReference: proofPath,
         verificationStatus: "VERIFICATION_PENDING",
       },
-      proofFileRef,
-      aiResultRef: `ai_res_${bookingId}`,
-      requestId: `req_${nowMs}`,
-    }).catch(sheetErr => console.warn("[Server API] Sheets mirror dispatch notice (Firestore remains single source of truth):", sheetErr));
+      proofFileRef: proofPath,
+      aiResultRef: "",
+    }).catch(() => undefined);
 
-    // 6. Dispatch Real-time Alert to Admin Notification Inbox & FCM
-    addDoc(collection(db, "notifications"), {
-      title: `💰 Payment Proof Submitted: ${bookingData.customerDetails?.fullName || "Guest"}`,
-      body: `UTR ${cleanUtr || "N/A"} received for #${bookingId} (₹${bookingData.commercials?.depositRequired || 7500}). Tap to review & lock slot.`,
-      category: "PAYMENT",
-      targetRole: "ADMIN",
-      bookingId,
-      isUnread: true,
-      data: {
-        bookingId,
-        customerName: bookingData.customerDetails?.fullName || "Guest",
-        phone: bookingData.customerDetails?.phone || "",
-        utrNumber: cleanUtr || "N/A",
-        amount: bookingData.commercials?.depositRequired || 7500,
-        proofFileRef,
-      },
-      createdAt: serverTimestamp(),
-      isoTimestamp: proofSubmittedAtIso,
-    }).catch(err => console.warn("[Server API] Admin payment notification dispatch notice:", err));
-
-    return NextResponse.json({
-      success: true,
-      bookingId,
-      status: "PAYMENT_PROOF_SUBMITTED",
-      message: "Payment proof submitted for admin verification",
-    });
+    return NextResponse.json({ bookingId, status: "PAYMENT_PROOF_SUBMITTED" });
   } catch (err: any) {
-    console.error("[Server API] submit-proof error:", err);
-    return NextResponse.json({ error: "Failed to submit payment proof" }, { status: 500 });
+    if (err instanceof HttpError) return jsonError(err.message, err.status);
+    console.error("[submit-proof] error:", err);
+    return jsonError("We couldn't upload your payment proof right now. Please try again in a moment.", 500);
   }
 }

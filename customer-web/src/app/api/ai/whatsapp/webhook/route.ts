@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { handleAIRequest } from "../../../../../lib/ai/ai-gateway";
 import { AiAuthContext } from "../../../../../lib/ai/types";
-import { db } from "../../../../../lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { getDb, doc, getDoc, setDoc, updateDoc, collection, addDoc } from "../../../../../lib/firestore-admin-compat";
 import { sendWhatsAppMessageToCustomer } from "../../../../../lib/ai/whatsapp-sender";
 
 // ----------------------------------------------------------------------
@@ -37,6 +36,7 @@ export async function GET(req: Request) {
 // ----------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
+    const db = getDb();
     const rawText = await req.text();
     const signatureHeader = req.headers.get("x-hub-signature-256") || "";
     const appSecret = process.env.META_APP_SECRET;
@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     });
 
     // Handle Direct API simulation test payloads
-    let senderPhone = body.phone || "+919829012345";
+    let senderPhone = body.phone || "+919000000000";
     let messageText = body.message || body.text || "Hi, I want bridal makeup.";
     let mediaUrl = body.mediaUrl || null;
     let isImage = body.isImage || Boolean(mediaUrl);

@@ -369,17 +369,17 @@ class _MultiStepBookingWizardState extends State<MultiStepBookingWizard> {
         readyByTime: _readyByTime,
         venueLocation: _venueController.text.trim(),
         city: _cityController.text.trim(),
-        isOutstation: _calculatedTravelFee > 0,
       ),
       serviceTitle: _selectedService,
       packageName: _selectedPackage,
       commercials: CommercialDetails(
         basePrice: _servicePrice,
         travelFee: _calculatedTravelFee,
+        totalAmount: _servicePrice + _calculatedTravelFee,
         depositRequired: _calculatedDeposit,
         depositPaid: 0,
       ),
-      status: BookingStatus.awaitingApproval,
+      status: BookingStatus.depositPending,
       createdAt: DateTime.now(),
     );
 

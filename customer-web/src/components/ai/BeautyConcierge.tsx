@@ -264,7 +264,7 @@ export const BeautyConcierge: React.FC<BeautyConciergeProps> = ({
           <ShieldCheck size={16} style={{ color: "#D4AF37", flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Enter Phone Number or Booking ID (e.g. 9829012345 / BK-9921)"
+            placeholder="Enter Phone Number or Booking ID (e.g. 9000000000 / BK-9921)"
             value={customerPhone}
             onChange={(e) => setCustomerPhone(e.target.value)}
             style={{

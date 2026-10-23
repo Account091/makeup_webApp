@@ -1,16 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
     href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
   -->
@@ -18,68 +11,113 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- SEO Primary Meta Tags -->
-  <title>Makeovers by Prachi | Luxury Bridal Makeup Artist Jodhpur</title>
-  <meta name="description" content="Premier luxury bridal makeup artist in Jodhpur, Rajasthan. Specializing in traditional Rajasthani Poshak styling, royal jewelry coordination, HD/Airbrush bridal glam, engagement, and destination weddings.">
-  <meta name="keywords" content="Bridal makeup artist in Jodhpur, Rajasthani bridal makeup, makeup artist Jodhpur, Poshak bridal makeup, engagement makeup Jodhpur, destination wedding makeup Rajasthan">
-  <meta name="author" content="Prachi Shrimali / Makeovers by Prachi">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
-  <!-- Open Graph / Facebook / WhatsApp -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Makeovers by Prachi | Luxury Bridal & Occasion Artistry">
-  <meta property="og:description" content="Book your wedding date with Jodhpur's leading luxury bridal makeup artist. Studio & destination wedding travel available.">
-  <meta property="og:image" content="https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1200">
-  <meta property="og:site_name" content="Makeovers by Prachi">
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
-
-  <!-- JSON-LD LocalBusiness & Service Schema -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "BeautySalon",
-    "name": "Makeovers by Prachi",
-    "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=800",
-    "telephone": "+919829012345",
-    "email": "prachi@makeoversbyprachi.com",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Jodhpur",
-      "addressRegion": "Rajasthan",
-      "addressCountry": "IN"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": "26.2389",
-      "longitude": "73.0243"
-    },
-    "url": "https://makeoversbyprachi.com",
-    "priceRange": "₹3500 - ₹25000",
-    "openingHoursSpecification": {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-      "opens": "09:00",
-      "closes": "20:00"
-    }
-  }
-  </script>
+  <title>Makeovers by Prachi — Admin</title>
+  <meta name="description" content="Studio console for Makeovers by Prachi: bookings, payment verification, calendar and services.">
+  <!-- Staff-only console: keep it out of search results. -->
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#4A1942">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Makeovers by Prachi">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MbP Admin">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body { margin: 0; height: 100%; background: #FBF8F3; }
+
+    /* Branded splash shown until Flutter paints its first frame. */
+    #splash {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background:
+        radial-gradient(60% 45% at 50% 0%, #F7EEDC 0%, rgba(251,248,243,0) 70%),
+        #FBF8F3;
+      font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+      transition: opacity .45s ease;
+    }
+    #splash.hide { opacity: 0; pointer-events: none; }
+    #splash .mark {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg, #E3C77E, #D4AF37 50%, #A8813A);
+      box-shadow: 0 10px 30px rgba(168,129,58,.35);
+      display: flex; align-items: center; justify-content: center;
+      animation: pop .7s cubic-bezier(.2,.9,.3,1.3) both;
+    }
+    #splash .mark span {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 1.4px solid rgba(255,255,255,.55);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 36px; font-weight: 700; line-height: 1;
+    }
+    #splash .name {
+      margin-top: 20px; color: #2C1320; font-size: 24px; font-weight: 600;
+      letter-spacing: .2px; animation: rise .7s .1s ease both;
+    }
+    #splash .caption {
+      margin-top: 6px; color: #A8813A; font: 700 11px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+      letter-spacing: 2.4px; animation: rise .7s .18s ease both;
+    }
+    #splash .bar {
+      margin-top: 28px; width: 120px; height: 2px; border-radius: 2px;
+      background: #F1E6D7; overflow: hidden; position: relative;
+    }
+    #splash .bar::after {
+      content: ""; position: absolute; top: 0; bottom: 0; width: 40%;
+      background: #4A1942; border-radius: 2px;
+      animation: slide 1.2s ease-in-out infinite;
+    }
+    @keyframes pop { from { transform: scale(.7); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+    @keyframes rise { from { transform: translateY(8px); opacity: 0 } to { transform: none; opacity: 1 } }
+    @keyframes slide { from { left: -40% } to { left: 100% } }
+    @media (prefers-reduced-motion: reduce) {
+      #splash .mark, #splash .name, #splash .caption, #splash .bar::after { animation: none; }
+    }
+
+    /* Firebase emulator warning: a small, tasteful pill instead of a
+       full-width strip (only present in emulator builds). */
+    .firebase-emulator-warning, #firebase-emulator-warning {
+      position: fixed !important;
+      left: 50% !important; right: auto !important; top: 10px !important; bottom: auto !important; transform: translateX(-50%);
+      width: auto !important; max-width: 60vw;
+      margin: 0 !important; padding: 4px 10px !important;
+      border: 1px solid rgba(212,175,55,.5) !important; border-radius: 999px !important;
+      background: rgba(44,19,32,.88) !important; color: #F7EEDC !important;
+      font: 600 10.5px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif !important;
+      text-align: left !important; letter-spacing: .2px;
+      pointer-events: none; z-index: 2147483000 !important; opacity: .85;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    @media (max-width: 600px) {
+      .firebase-emulator-warning, #firebase-emulator-warning {
+        top: 4px !important; font-size: 0 !important; padding: 2px 8px !important; max-width: 40vw;
+      }
+      .firebase-emulator-warning::before, #firebase-emulator-warning::before {
+        content: "EMULATOR"; font: 700 9px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 1px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="splash" aria-label="Loading Makeovers by Prachi admin">
+    <div class="mark"><span>P</span></div>
+    <div class="name">Makeovers by Prachi</div>
+    <div class="caption">STUDIO CONSOLE</div>
+    <div class="bar"></div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var s = document.getElementById('splash');
+      if (!s) return;
+      s.classList.add('hide');
+      setTimeout(function () { s.remove(); }, 500);
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

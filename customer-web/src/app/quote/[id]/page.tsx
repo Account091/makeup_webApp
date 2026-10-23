@@ -131,7 +131,7 @@ export default function QuotePage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen bg-[#FDFBF7] text-[#1A1A1A] font-sans pb-24">
       {/* Luxury Top Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-[#2A0845]/95 backdrop-blur-md border-b border-[#D4AF37]/30 text-white px-6 py-4">
+      <div className="bg-[#2A0845]/95 border-b border-[#D4AF37]/30 text-white px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="font-serif text-xl tracking-wider text-[#D4AF37] font-semibold hover:opacity-90">
@@ -161,7 +161,7 @@ export default function QuotePage({ params }: { params: { id: string } }) {
             </Link>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Hero Header */}
       <section className="bg-gradient-to-b from-[#2A0845] via-[#3B0E5E] to-[#2A0845] text-white pt-10 pb-16 px-6">

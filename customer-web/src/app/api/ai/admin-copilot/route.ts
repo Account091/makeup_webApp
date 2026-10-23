@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       ],
       actionCards: structured?.data?.actionCards || [
         { label: "Review Payment (BK-9921)", actionType: "VERIFY_PAYMENT_RECOMMENDED", targetId: "BK-9921" },
-        { label: "Call Customer (Priya)", actionType: "CALL_CUSTOMER", phone: "+919829012345" },
+        { label: "Call Customer (Priya)", actionType: "CALL_CUSTOMER", phone: "+919000000000" },
         { label: "Review & Execute", actionType: "REVIEW_AND_EXECUTE" },
       ],
       providerUsed: result.provider,

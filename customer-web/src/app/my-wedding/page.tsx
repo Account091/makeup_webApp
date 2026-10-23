@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Header from "../../components/Header";
 
 interface WeddingFunction {
   id: string;
@@ -25,7 +24,7 @@ interface InspirationItem {
 export default function MyWeddingPage() {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [phone, setPhone] = useState<string>("+91 98290 12345");
+  const [phone, setPhone] = useState<string>("+91 90000 00000");
   const [otpSent, setOtpSent] = useState<boolean>(false);
   const [otpCode, setOtpCode] = useState<string>("");
   const [authError, setAuthError] = useState<string>("");
@@ -237,7 +236,6 @@ export default function MyWeddingPage() {
 
   return (
     <div style={{ backgroundColor: "#FDFBF7", minHeight: "100vh", color: "#2A0845" }}>
-      <Header />
 
       {/* ─────────────────────────────────────────────────────────────
           LOGIN / OTP SCREEN (IF NOT AUTHENTICATED)
@@ -294,7 +292,7 @@ export default function MyWeddingPage() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98290 12345"
+                    placeholder="+91 90000 00000"
                     style={{
                       flex: 1,
                       padding: "14px 16px",
@@ -446,7 +444,7 @@ export default function MyWeddingPage() {
             {/* Quick Actions Row */}
             <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid rgba(212, 175, 55, 0.2)", display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
               <a
-                href="https://wa.me/919829012345?text=Hello%20Prachi%20I%20have%20a%20question%20regarding%20my%20bridal%20booking%20MBP-2026-X8K9"
+                href={`https://wa.me/${process.env.NEXT_PUBLIC_STUDIO_WHATSAPP || ""}?text=Hello%20Prachi%20I%20have%20a%20question%20regarding%20my%20bridal%20booking`}
                 target="_blank"
                 rel="noreferrer"
                 style={{
